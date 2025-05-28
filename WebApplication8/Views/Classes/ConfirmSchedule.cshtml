@@ -1,0 +1,42 @@
+﻿@model List<GeneratedClassViewModel>
+
+@{
+    ViewData["Title"] = "Confirm Schedule";
+    var instructorId = ViewBag.InstructorId;
+}
+
+<h2>Generated Schedule</h2>
+
+<form asp-action="ConfirmSchedule" method="post">
+    <input type="hidden" name="InstructorId" value="@instructorId" />
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Course</th>
+                <th>Room</th>
+                <th>Day</th>
+                <th>Start Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (int i = 0; i < Model.Count; i++)
+            {
+                <tr>
+                    <td>@Model[i].CourseName</td>
+                    <td>@Model[i].RoomName</td>
+                    <td>@Model[i].DayOfWeek</td>
+                    <td>@Model[i].StartTime</td>
+                </tr>
+
+                @* Hidden inputs to pass data back *@
+                <input type="hidden" name="schedule[@i].CourseId" value="@Model[i].CourseId" />
+                <input type="hidden" name="schedule[@i].RoomId" value="@Model[i].RoomId" />
+                <input type="hidden" name="schedule[@i].DayOfWeek" value="@Model[i].DayOfWeek" />
+                <input type="hidden" name="schedule[@i].StartTime" value="@Model[i].StartTime" />
+            }
+        </tbody>
+    </table>
+
+    <button type="submit" class="btn btn-success">Confirm & Save</button>
+</form>
