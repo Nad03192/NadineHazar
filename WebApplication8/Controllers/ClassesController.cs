@@ -6,6 +6,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using WebApplication8.Data;
 using WebApplication8.Models;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace WebApplication8.Controllers
 {
@@ -62,14 +65,7 @@ namespace WebApplication8.Controllers
 
             var classEndTime = @class.StartTime + TimeSpan.FromHours(course.CreditNumber);
 
-            bool isConflict = _context.Classes.Any(c =>
-                c.UserId == @class.UserId &&
-                c.DayOfWeek == @class.DayOfWeek &&
-                ((@class.StartTime >= c.StartTime && @class.StartTime < c.StartTime + TimeSpan.FromHours(c.Course.CreditNumber)) ||
-                 (classEndTime > c.StartTime && classEndTime <= c.StartTime + TimeSpan.FromHours(c.Course.CreditNumber)))
-            );
-
-            if (isConflict)
+            if (await HasSchedulingConflict(@class.UserId, @class.DayOfWeek, @class.StartTime, classEndTime))
             {
                 ModelState.AddModelError("UserId", "This instructor has a conflicting class at the selected time.");
             }
@@ -106,6 +102,19 @@ namespace WebApplication8.Controllers
         {
             if (id != @class.ClassId) return NotFound();
 
+            var course = await _context.Courses.FindAsync(@class.CourseId);
+            if (course == null)
+            {
+                ModelState.AddModelError("CourseId", "Invalid course.");
+            }
+
+            var classEndTime = @class.StartTime + TimeSpan.FromHours(course.CreditNumber);
+
+            if (await HasSchedulingConflict(@class.UserId, @class.DayOfWeek, @class.StartTime, classEndTime, @class.ClassId))
+            {
+                ModelState.AddModelError("UserId", "This instructor has a conflicting class at the selected time.");
+            }
+
             if (ModelState.IsValid)
             {
                 try
@@ -121,20 +130,9 @@ namespace WebApplication8.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            ViewData["UserId"] = new SelectList(
-    _context.Users.Select(u => new { u.Id, Name = u.UserName }),
-    "Id", "Name");
-
-            ViewData["CourseId"] = new SelectList(
-                _context.Courses.Select(c => new { c.CourseId, c.Name }),
-                "CourseId", "Name");
-
-            ViewData["RoomId"] = new SelectList(
-                _context.Rooms.Select(r => new { r.RoomId, r.Name }),
-                "RoomId", "Name");
-
-
-
+            ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "Name", @class.CourseId);
+            ViewData["RoomId"] = new SelectList(_context.Rooms, "RoomId", "Name", @class.RoomId);
+            ViewData["UserId"] = new SelectList(_context.Users, "Id", "UserName", @class.UserId);
             return View(@class);
         }
 
@@ -171,165 +169,164 @@ namespace WebApplication8.Controllers
             return _context.Classes.Any(e => e.ClassId == id);
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetEligibleInstructors(int courseId, TimeSpan startTime, DayOfWeek dayOfWeek)
+        private async Task<bool> HasSchedulingConflict(string userId, DayOfWeek dayOfWeek, TimeSpan startTime, TimeSpan endTime, int? classId = null)
         {
-            var course = await _context.Courses.FindAsync(courseId);
-            if (course == null)
-                return Json(Enumerable.Empty<SelectListItem>());
+            var classes = await _context.Classes
+                .Include(c => c.Course)
+                .Where(c => c.UserId == userId && c.DayOfWeek == dayOfWeek && (classId == null || c.ClassId != classId))
+                .ToListAsync();
 
-            TimeSpan endTime = startTime + TimeSpan.FromHours(course.CreditNumber);
+            return classes.Any(c =>
+            {
+                var existingStart = c.StartTime;
+                var existingEnd = existingStart + TimeSpan.FromHours(c.Course.CreditNumber);
 
-            var eligibleInstructors = await (from user in _context.Users
-                                             join ic in _context.InstructorCourses on user.Id equals ic.UserId
-                                             join a in _context.Availabilities on user.Id equals a.UserId
-                                             join s in _context.Shifts on a.ShiftId equals s.ShiftId
-                                             where ic.CourseId == courseId
-                                                   && a.DayOfWeek == dayOfWeek
-                                                   && s.StartTime <= startTime
-                                                   && s.EndTime >= endTime
-                                             where !_context.Classes.Any(c =>
-                                                 c.UserId == user.Id &&
-                                                 c.DayOfWeek == dayOfWeek &&
-                                                 ((startTime >= c.StartTime && startTime < c.StartTime + TimeSpan.FromHours(c.Course.CreditNumber)) ||
-                                                  (endTime > c.StartTime && endTime <= c.StartTime + TimeSpan.FromHours(c.Course.CreditNumber))))
-                                             select new SelectListItem
-                                             {
-                                                 Value = user.Id,
-                                                 Text = user.UserName
-                                             }).Distinct().ToListAsync();
+                return startTime < existingEnd && endTime > existingStart;
+            });
+        }
+
+        [HttpGet]
+        public IActionResult GetEligibleInstructors(int courseId, string newStartTime, DayOfWeek dayOfWeek)
+        {
+            // Validate input time format
+            if (!TimeSpan.TryParse(newStartTime, out TimeSpan startTime))
+                return Json(new List<SelectListItem>());
+
+            // Get course credits
+            int creditHours = _context.Courses
+                .Where(c => c.CourseId == courseId)
+                .Select(c => c.CreditNumber)
+                .FirstOrDefault();
+
+            if (creditHours <= 0)
+                return Json(new List<SelectListItem>());
+
+            // Calculate new class end time safely (cap at 24h)
+            TimeSpan duration = TimeSpan.FromHours(creditHours);
+            TimeSpan newEndTime = startTime + duration;
+            if (newEndTime.TotalHours > 24)
+                newEndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)).Add(TimeSpan.FromSeconds(59));
+
+            // Get instructors who teach this course
+            var instructorUserIds = _context.InstructorCourses
+                .Where(ic => ic.CourseId == courseId)
+                .Select(ic => ic.UserId)
+                .ToList();
+
+            if (!instructorUserIds.Any())
+                return Json(new List<SelectListItem>());
+
+            // Get instructors available at that day/time
+            var availableInstructorIds = _context.Availabilities
+                .Include(a => a.Shift)
+                .Where(a =>
+                    instructorUserIds.Contains(a.UserId) &&
+                    a.DayOfWeek == dayOfWeek &&
+                    a.Shift != null &&
+                    a.Shift.StartTime <= startTime &&
+                    a.Shift.EndTime >= newEndTime)
+                .Select(a => a.UserId)
+                .Distinct()
+                .ToList();
+
+            if (!availableInstructorIds.Any())
+                return Json(new List<SelectListItem>());
+
+            // Find instructors who have conflicting classes at the same time
+            var conflictingInstructorIds = _context.Classes
+                .Include(c => c.Course)
+                .Where(c => c.DayOfWeek == dayOfWeek && c.Course != null)
+                .AsEnumerable() // switch to in-memory for TimeSpan calc
+                .Where(c =>
+                {
+                    TimeSpan existingStart = c.StartTime;
+                    TimeSpan existingEnd = existingStart + TimeSpan.FromHours(c.Course.CreditNumber);
+                    // Check overlap: (start < existingEnd) && (newEnd > existingStart)
+                    return startTime < existingEnd && newEndTime > existingStart;
+                })
+                .Select(c => c.UserId)
+                .Distinct()
+                .ToList();
+
+            // Eligible instructors are those available and not conflicting
+            var eligibleUserIds = availableInstructorIds.Except(conflictingInstructorIds).ToList();
+
+            var eligibleInstructors = _context.Users
+                .Where(u => eligibleUserIds.Contains(u.Id))
+                .Select(u => new SelectListItem
+                {
+                    Value = u.Id,
+                    Text = u.UserName
+                })
+                .ToList();
 
             return Json(eligibleInstructors);
         }
 
 
-        public async Task<IActionResult> GenerateSchedule(string instructorId)
+        [HttpGet]
+        public IActionResult GetAvailableRooms(int courseId, string newStartTime, string dayOfWeekStr)
         {
-            var instructor = await _context.Users
-                .FirstOrDefaultAsync(u => u.Id == instructorId);
+            // Validate input
+            if (courseId == 0 || string.IsNullOrEmpty(newStartTime) || string.IsNullOrEmpty(dayOfWeekStr))
+                return Json(new List<SelectListItem>());
 
-            if (instructor == null)
-                return NotFound("Instructor not found");
-
-            // Get availabilities separately
-            var availabilities = await _context.Availabilities
-                .Include(a => a.Shift)
-                .Where(a => a.UserId == instructorId)
-                .ToListAsync();
-
-            // Get courses assigned to instructor
-            var instructorCourses = await _context.InstructorCourses
-                .Include(ic => ic.Course)
-                .Where(ic => ic.UserId == instructorId)
-                .ToListAsync();
-
-            // Get loaded time hours per week
-            var loadedTime = await _context.LoadedTimes
-                .Where(l => l.UserId == instructorId)
-                .Select(l => l.HoursPerWeek)
-                .FirstOrDefaultAsync();
-
-            // Calculate total available hours from shifts
-            double totalAvailableTime = availabilities.Sum(a =>
-                (a.Shift.EndTime - a.Shift.StartTime).TotalHours);
-            if (totalAvailableTime < loadedTime)
+            if (!TimeSpan.TryParse(newStartTime, out TimeSpan startTime) ||
+                !Enum.TryParse<DayOfWeek>(dayOfWeekStr, out DayOfWeek dayOfWeek))
             {
-                var errorModel = new ErrorViewModel
-                {
-                    ErrorMessage = "Instructor's availability is less than required load time.",
-                    RequestId = HttpContext.TraceIdentifier
-                };
-                return View("Error", errorModel);
+                return Json(new List<SelectListItem>());
             }
 
+            int creditHours = _context.Courses
+                .Where(c => c.CourseId == courseId)
+                .Select(c => c.CreditNumber)
+                .FirstOrDefault();
 
-            var schedules = new List<GeneratedClassViewModel>();
-            var usedSlots = new List<(DayOfWeek day, TimeSpan start, TimeSpan end, int roomId)>();
+            if (creditHours <= 0)
+                return Json(new List<SelectListItem>());
 
-            foreach (var ic in instructorCourses)
+            // Calculate end time safely capped at 24h
+            TimeSpan duration = TimeSpan.FromHours(creditHours);
+            TimeSpan newEndTime = startTime + duration;
+            if (newEndTime.TotalHours > 24)
+                newEndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)).Add(TimeSpan.FromSeconds(59));
+
+            var allRooms = _context.Rooms.ToList();
+
+            // Get classes booked on the same day, with course info
+            var classesOnSameDay = _context.Classes
+                .Include(c => c.Course)
+                .Where(c => c.DayOfWeek == dayOfWeek && c.RoomId != 0 && c.Course != null)
+                .ToList();
+
+            var unavailableRoomIds = new HashSet<int>();
+
+            foreach (var bookedClass in classesOnSameDay)
             {
-                var course = ic.Course;
-                double creditHours = course.CreditNumber;
-                bool scheduled = false;
+                TimeSpan bookedStart = bookedClass.StartTime;
+                TimeSpan bookedEnd = bookedStart + TimeSpan.FromHours(bookedClass.Course.CreditNumber);
 
-                foreach (var availability in availabilities)
+                // Overlap check:
+                bool isOverlap = startTime < bookedEnd && newEndTime > bookedStart;
+
+                if (isOverlap)
                 {
-                    var shift = availability.Shift;
-                    var day = availability.DayOfWeek;
-                    var start = shift.StartTime;
-
-                    while (start + TimeSpan.FromHours(creditHours) <= shift.EndTime)
-                    {
-                        var end = start + TimeSpan.FromHours(creditHours);
-
-                        // Find available room
-                        var availableRoom = await _context.Rooms.FirstOrDefaultAsync(room =>
-                            !_context.Classes.Any(c =>
-                                c.RoomId == room.RoomId &&
-                                c.DayOfWeek == day &&
-                                (
-                                    (start >= c.StartTime && start < c.StartTime + TimeSpan.FromHours(c.Course.CreditNumber)) ||
-                                    (end > c.StartTime && end <= c.StartTime + TimeSpan.FromHours(c.Course.CreditNumber))
-                                )
-                            )
-                        );
-
-                        if (availableRoom != null && !usedSlots.Any(s =>
-                                s.day == day && s.start == start && s.end == end && s.roomId == availableRoom.RoomId))
-                        {
-                            schedules.Add(new GeneratedClassViewModel
-                            {
-                                CourseId = course.CourseId,
-                                CourseName = course.Name,
-                                RoomId = availableRoom.RoomId,
-                                RoomName = availableRoom.Name,
-                                StartTime = start,
-                                DayOfWeek = day
-                            });
-
-                            usedSlots.Add((day, start, end, availableRoom.RoomId));
-                            scheduled = true;
-                            break;
-                        }
-
-                        start = start.Add(TimeSpan.FromMinutes(30)); // try next 30min slot
-                    }
-
-                    if (scheduled)
-                        break;
-                }
-
-                if (!scheduled)
-                {
-                    ViewBag.Error = $"Could not schedule course: {course.Name}";
-                    return View("Error");
+                    unavailableRoomIds.Add(bookedClass.RoomId);
                 }
             }
 
-            ViewBag.InstructorId = instructorId;
-            return View("ConfirmSchedule", schedules);
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> ConfirmSchedule(string instructorId, List<GeneratedClassViewModel> schedule)
-        {
-            foreach (var item in schedule)
-            {
-                var @class = new Class
+            var availableRooms = allRooms
+                .Where(r => !unavailableRoomIds.Contains(r.RoomId))
+                .Select(r => new SelectListItem
                 {
-                    UserId = instructorId,
-                    CourseId = item.CourseId,
-                    RoomId = item.RoomId,
-                    DayOfWeek = item.DayOfWeek,
-                    StartTime = item.StartTime
-                };
+                    Value = r.RoomId.ToString(),
+                    Text = r.Name
+                })
+                .ToList();
 
-                _context.Classes.Add(@class);
-            }
-
-            await _context.SaveChangesAsync();
-            return RedirectToAction("Index");
+            return Json(availableRooms);
         }
+
 
 
 

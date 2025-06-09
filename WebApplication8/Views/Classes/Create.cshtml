@@ -1,100 +1,132 @@
 ﻿@model WebApplication8.Models.Class
-
 @{
-    ViewData["Title"] = "Create";
+    ViewData["Title"] = "Create Class";
 }
 
-<h1>Create</h1>
+<h1>Create Class</h1>
 
-<h4>Class</h4>
-<hr />
-<div class="row">
-    <div class="col-md-6">
-        <form asp-action="Create">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
-            <!-- Instructor Dropdown -->
-            <div class="form-group">
-                <label asp-for="UserId" class="control-label">Instructor</label>
-                <select asp-for="UserId" class="form-control" asp-items="ViewBag.UserId"></select>
-                <span asp-validation-for="UserId" class="text-danger"></span>
-            </div>
-
-            <!-- Course Dropdown -->
-            <div class="form-group">
-                <label asp-for="CourseId" class="control-label">Course</label>
-                <select asp-for="CourseId" class="form-control" asp-items="ViewBag.CourseId"></select>
-                <span asp-validation-for="CourseId" class="text-danger"></span>
-            </div>
-
-            <!-- Room Dropdown -->
-            <div class="form-group">
-                <label asp-for="RoomId" class="control-label">Room</label>
-                <select asp-for="RoomId" class="form-control" asp-items="ViewBag.RoomId"></select>
-                <span asp-validation-for="RoomId" class="text-danger"></span>
-            </div>
-
-            <!-- Start Time -->
-            <div class="form-group">
-                <label asp-for="StartTime" class="control-label">Start Time</label>
-                <input asp-for="StartTime" class="form-control" type="time" />
-                <span asp-validation-for="StartTime" class="text-danger"></span>
-            </div>
-
-            <!-- Day of Week -->
-            <div class="form-group">
-                <label asp-for="DayOfWeek" class="control-label">Day</label>
-                <select asp-for="DayOfWeek" class="form-control">
-                    @foreach (var day in Enum.GetValues(typeof(DayOfWeek)))
-                    {
-                        <option value="@day">@day</option>
-                    }
-                </select>
-                <span asp-validation-for="DayOfWeek" class="text-danger"></span>
-            </div>
-
-            <div class="form-group mt-3">
-                <input type="submit" value="Create" class="btn btn-primary" />
-                <a asp-action="Index" class="btn btn-secondary ml-2">Back to List</a>
-            </div>
-        </form>
+<form asp-action="Create" method="post" id="createClassForm">
+    <div class="form-group">
+        <label asp-for="CourseId"></label>
+        <select asp-for="CourseId" class="form-control" id="courseSelect">
+            <option value="">-- Select Course --</option>
+            @foreach (var course in (SelectList)ViewData["CourseId"])
+            {
+                <option value="@course.Value">@course.Text</option>
+            }
+        </select>
     </div>
-</div>
 
+    <div class="form-group">
+        <label asp-for="StartTime"></label>
+        <input asp-for="StartTime" class="form-control" type="time" id="startTimeInput" />
+    </div>
+
+    <div class="form-group">
+        <label asp-for="DayOfWeek"></label>
+        <select asp-for="DayOfWeek" class="form-control" id="dayOfWeekSelect">
+            <option value="">-- Select Day --</option>
+            @foreach (var day in Enum.GetValues(typeof(DayOfWeek)).Cast<DayOfWeek>())
+            {
+                <option value="@day">@day</option>
+            }
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="UserId">Instructor</label>
+        <select asp-for="UserId" class="form-control" id="instructorSelect">
+            <option value="">-- Select Instructor --</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="RoomId"></label>
+        <select asp-for="RoomId" class="form-control" id="roomSelect">
+            <option value="">-- Select Room --</option>
+            @foreach (var room in (SelectList)ViewData["RoomId"])
+            {
+                <option value="@room.Value">@room.Text</option>
+            }
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Create</button>
+</form>
 @section Scripts {
-    <script>
-        function loadInstructors() {
-            const courseId = $('#CourseId').val();
-            const startTime = $('#StartTime').val();
-            const dayOfWeek = $('#DayOfWeek').val();
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-            if (courseId && startTime && dayOfWeek !== "") {
+    <script>
+        function loadData() {
+            var courseId = $('#courseSelect').val();
+            var startTime = $('#startTimeInput').val();
+            var dayOfWeek = $('#dayOfWeekSelect').val();
+
+            // Load Instructors
+            if (courseId && startTime && dayOfWeek) {
                 $.ajax({
-                    url: '/Classes/GetEligibleInstructors',
+                    url: '@Url.Action("GetEligibleInstructors", "Classes")',
+                    type: 'GET',
                     data: {
                         courseId: courseId,
-                        startTime: startTime,
+                        newStartTime: startTime,
                         dayOfWeek: dayOfWeek
                     },
                     success: function (data) {
-                        const instructorSelect = $('#UserId');
+                        var instructorSelect = $('#instructorSelect');
                         instructorSelect.empty();
+                        instructorSelect.append($('<option>').val('').text('-- Select Instructor --'));
 
                         if (data.length === 0) {
-                            instructorSelect.append('<option>No eligible instructors</option>');
+                            instructorSelect.append($('<option>').val('').text('No eligible instructors available'));
                         } else {
-                            instructorSelect.append('<option value="">Select Instructor</option>');
-                            $.each(data, function (index, item) {
-                                instructorSelect.append(`<option value="${item.value}">${item.text}</option>`);
+                            $.each(data, function (i, instructor) {
+                                instructorSelect.append($('<option>').val(instructor.value).text(instructor.text));
                             });
                         }
+                    },
+                    error: function () {
+                        alert('Error loading instructors.');
                     }
                 });
+            } else {
+                $('#instructorSelect').empty().append($('<option>').val('').text('-- Select Instructor --'));
+            }
+
+            // Load Rooms
+            if (courseId && startTime && dayOfWeek) {
+                $.ajax({
+                    url: '@Url.Action("GetAvailableRooms", "Classes")',
+                    type: 'GET',
+                    data: {
+                        courseId: courseId,
+                        newStartTime: startTime,
+                        dayOfWeekStr: dayOfWeek
+                    },
+                    success: function (data) {
+                        var roomSelect = $('#roomSelect');
+                        roomSelect.empty();
+                        roomSelect.append($('<option>').val('').text('-- Select Room --'));
+
+                        if (data.length === 0) {
+                            roomSelect.append($('<option>').val('').text('No rooms available'));
+                        } else {
+                            $.each(data, function (i, room) {
+                                roomSelect.append($('<option>').val(room.value).text(room.text));
+                            });
+                        }
+                    },
+                    error: function () {
+                        alert('Error loading available rooms.');
+                    }
+                });
+            } else {
+                $('#roomSelect').empty().append($('<option>').val('').text('-- Select Room --'));
             }
         }
 
         $(document).ready(function () {
-            $('#CourseId, #StartTime, #DayOfWeek').on('change', loadInstructors);
+            $('#courseSelect, #startTimeInput, #dayOfWeekSelect').on('change', loadData);
         });
     </script>
 }
