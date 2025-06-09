@@ -1,0 +1,126 @@
+﻿@{
+    ViewData["Title"] = "Instructor Schedule Generator";
+    var instructors = (List<SelectListItem>)ViewData["Instructors"];
+}
+
+<h2>Generate Schedule for Instructor</h2>
+
+<select id="instructorSelect" class="form-control">
+    <option value="">-- Select Instructor --</option>
+    @foreach (var ins in instructors)
+    {
+        <option value="@ins.Value">@ins.Text</option>
+    }
+</select>
+
+<button id="generateBtn" class="btn btn-primary mt-2" disabled>Generate Schedule</button>
+<button id="regenerateBtn" class="btn btn-secondary mt-2" disabled>Regenerate</button>
+<button id="confirmBtn" class="btn btn-success mt-2" disabled>Confirm Schedule</button>
+
+<div id="scheduleContainer" class="mt-4"></div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script>
+        let currentSchedule = [];
+
+        $('#instructorSelect').on('change', function () {
+            $('#generateBtn').prop('disabled', !this.value);
+            $('#regenerateBtn').prop('disabled', true);
+            $('#confirmBtn').prop('disabled', true);
+            $('#scheduleContainer').empty();
+            currentSchedule = [];
+        });
+
+        function renderSchedule(schedule) {
+            let html = '<table class="table table-bordered"><thead><tr><th>Course</th><th>Day</th><th>Start Time</th><th>Room</th></tr></thead><tbody>';
+            schedule.forEach(c => {
+                html += `<tr>
+                            <td>${c.courseName}</td>
+                            <td>${c.dayOfWeek}</td>
+                            <td>${c.startTime}</td>
+                            <td>${c.roomName}</td>
+                        </tr>`;
+            });
+            html += '</tbody></table>';
+            $('#scheduleContainer').html(html);
+        }
+
+        function fetchSchedule() {
+            const instructorId = $('#instructorSelect').val();
+            if (!instructorId) return;
+
+            $.ajax({
+                url: '@Url.Action("GenerateSchedule", "Schedules")',
+                type: 'GET',
+                data: { instructorId: instructorId },
+                success: function (response) {
+                    if (response.success) {
+                        currentSchedule = response.schedule;
+                        renderSchedule(currentSchedule);
+
+                        // Enable buttons
+                        $('#regenerateBtn').prop('disabled', false);
+                        $('#confirmBtn').prop('disabled', false);
+
+                        // Show notice if any
+                        if (response.notice) {
+                            alert(response.notice);
+                        }
+                    } else {
+                        // Show error message from server
+                        alert(response.message || 'Failed to generate schedule.');
+                        $('#scheduleContainer').empty();
+                        $('#regenerateBtn').prop('disabled', true);
+                        $('#confirmBtn').prop('disabled', true);
+                    }
+                },
+                error: function () {
+                    alert('Error generating schedule.');
+                }
+            });
+        }
+
+        $('#generateBtn, #regenerateBtn').on('click', function () {
+            fetchSchedule();
+        });
+
+        $('#confirmBtn').on('click', function () {
+            const instructorId = $('#instructorSelect').val();
+            if (!instructorId || currentSchedule.length === 0) {
+                alert("Please select an instructor and generate a schedule before confirming.");
+                return;
+            }
+
+            console.log("Confirming schedule for instructor ID:", instructorId);
+            console.log("Schedule Data:", currentSchedule);
+
+            $.ajax({
+                url: '@Url.Action("ConfirmSchedule", "Schedules")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ schedule: currentSchedule, instructorId: instructorId }),
+                success: function (response) {
+                    if (response.success) {
+                        alert('Schedule confirmed and saved!');
+                        $('#regenerateBtn').prop('disabled', true);
+                        $('#confirmBtn').prop('disabled', true);
+                        $('#scheduleContainer').empty();
+                        currentSchedule = [];
+                    } else {
+                        let errorMsg = response.message;
+                        if (response.errors && response.errors.length) {
+                            errorMsg += "\nDetails:\n" + response.errors.join("\n");
+                        }
+                        alert(errorMsg);
+                    }
+                },
+                error: function (xhr) {
+                    console.log("AJAX Error:", xhr.status, xhr.responseText);
+                    alert(`Error: ${xhr.status} - ${xhr.responseText}`);
+                }
+            });
+        });
+    </script>
+}

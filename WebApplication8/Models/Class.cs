@@ -118,6 +118,11 @@ namespace WebApplication8.Models
         public TimeSpan StartTime { get; set; }
         public DayOfWeek DayOfWeek { get; set; }
     }
+    public class ScheduleRequest
+    {
+        public List<GeneratedClassViewModel> Schedule { get; set; }
+        public string InstructorId { get; set; }
+    }
 
 
 }
