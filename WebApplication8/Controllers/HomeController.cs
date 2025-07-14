@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 using WebApplication8.Models;
 
 namespace WebApplication8.Controllers
 {
-    [Authorize] // Require login
+    [Authorize]
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
@@ -22,7 +22,7 @@ namespace WebApplication8.Controllers
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
-                return RedirectToAction("Login", "Account");
+                return RedirectToPage("/Account/Login", new { area = "Identity" }); // ? This is the correct redirect for Identity
 
             var roles = await _userManager.GetRolesAsync(user);
 
@@ -31,7 +31,7 @@ namespace WebApplication8.Controllers
             else if (roles.Contains("Instructor"))
                 return RedirectToAction("Home", "Instructor");
             else
-                return View(); // default home page
+                return View(); // default view for other roles
         }
 
         public IActionResult Privacy()

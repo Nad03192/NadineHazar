@@ -2,9 +2,81 @@
     ViewData["Title"] = "Admin Home";
 }
 
-<h2>Admin Dashboard</h2>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
 
-<ul>
-    <li><a asp-action="CreateStudent" asp-controller="Admin">Create Student</a></li>
-    <li><a asp-action="CreateInstructor" asp-controller="Admin">Create Instructor</a></li>
-</ul>
+<h2 class="mb-4">Admin Dashboard</h2>
+
+<div class="d-flex flex-wrap gap-4">
+
+    <a asp-action="CreateStudent" asp-controller="Admin" class="dashboard-box text-decoration-none">
+        <i class="fas fa-user-graduate fa-2x mb-2"></i>
+        <div>Create Student</div>
+    </a>
+
+    <a asp-action="CreateInstructor" asp-controller="Admin" class="dashboard-box text-decoration-none">
+        <i class="fas fa-chalkboard-teacher fa-2x mb-2"></i>
+        <div>Create Instructor</div>
+    </a>
+
+    <a asp-action="Index" asp-controller="Courses" class="dashboard-box text-decoration-none">
+        <i class="fas fa-book fa-2x mb-2"></i>
+        <div>Courses</div>
+    </a>
+
+    <a asp-action="Index" asp-controller="Rooms" class="dashboard-box text-decoration-none">
+        <i class="fas fa-door-open fa-2x mb-2"></i>
+        <div>Rooms</div>
+    </a>
+
+    <a asp-action="Index" asp-controller="Availabilities" class="dashboard-box text-decoration-none">
+        <i class="fas fa-calendar-check fa-2x mb-2"></i>
+        <div>Availabilities</div>
+    </a>
+
+    <a asp-action="Index" asp-controller="InstructorCourses" class="dashboard-box text-decoration-none">
+        <i class="fas fa-user-cog fa-2x mb-2"></i>
+        <div>Instructor Courses</div>
+    </a>
+
+    <a asp-action="Index" asp-controller="LoadedTimes" class="dashboard-box text-decoration-none">
+        <i class="fas fa-clock fa-2x mb-2"></i>
+        <div>Loaded Times</div>
+    </a>
+
+    <a asp-action="Index" asp-controller="Shifts" class="dashboard-box text-decoration-none">
+        <i class="fas fa-business-time fa-2x mb-2"></i>
+        <div>Shifts</div>
+    </a>
+    <a asp-action="Index" asp-controller="Classes" class="dashboard-box text-decoration-none">
+        <i class="fas fa-school fa-2x mb-2"></i>
+        <div>Classes</div>
+    </a>
+</div>
+
+<style>
+    .dashboard-box {
+        width: 180px;
+        height: 150px;
+        background-color: #f8f9fa;
+        border: 1px solid #ddd;
+        border-radius: 12px;
+        box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.05);
+        color: #333;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .dashboard-box:hover {
+        transform: translateY(-5px);
+        box-shadow: 4px 4px 15px rgba(0, 0, 0, 0.1);
+        background-color: #e2e6ea;
+    }
+
+    .dashboard-box i {
+        color: #0d6efd;
+    }
+</style>
