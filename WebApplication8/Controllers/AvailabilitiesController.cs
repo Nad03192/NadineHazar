@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -178,5 +179,123 @@ namespace WebApplication8.Controllers
 
             return instructors;
         }
+
+
+        public async Task<IActionResult> EnterWeeklyAvailability()
+        {
+            var allShifts = await _context.Shifts
+     .OrderBy(s => s.StartTime)
+     .ToListAsync();
+
+            var model = new AvailabilityFormViewModel
+            {
+                WeekAvailability = Enum.GetValues(typeof(DayOfWeek))
+                    .Cast<DayOfWeek>()
+                    .Select(day => new DayShiftSelection
+                    {
+                        Day = day,
+                        AvailableShifts = allShifts,
+                        SelectedShiftIds = new List<int>()
+                    }).ToList()
+            };
+
+            var userId = _userManager.GetUserId(User);
+            var loadedTime = await _context.LoadedTimes.FirstOrDefaultAsync(l => l.UserId == userId);
+            ViewBag.LoadedTimeMinutes = loadedTime?.HoursPerWeek * 60;
+
+            return View(model);
+        }
+
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EnterWeeklyAvailability(AvailabilityFormViewModel model)
+        {
+            var userId = _userManager.GetUserId(User);
+
+            // Rehydrate AvailableShifts for view in case of validation errors
+            var allShifts = await _context.Shifts.ToListAsync();
+            foreach (var day in model.WeekAvailability)
+            {
+                day.AvailableShifts ??= allShifts;
+                day.SelectedShiftIds ??= new List<int>();
+            }
+
+            // Optional custom shift
+            Shift? customShift = null;
+            if (model.CustomStart.HasValue && model.CustomEnd.HasValue)
+            {
+                customShift = new Shift
+                {
+                    StartTime = model.CustomStart.Value,
+                    EndTime = model.CustomEnd.Value
+                };
+                _context.Shifts.Add(customShift);
+                await _context.SaveChangesAsync();
+                _context.Entry(customShift).Reload();
+            }
+
+            var selectedAvailabilities = new List<Availability>();
+
+            // Collect standard selected shifts
+            foreach (var day in model.WeekAvailability)
+            {
+                foreach (var shiftId in day.SelectedShiftIds)
+                {
+                    selectedAvailabilities.Add(new Availability
+                    {
+                        UserId = userId,
+                        ShiftId = shiftId,
+                        DayOfWeek = day.Day
+                    });
+                }
+            }
+
+            // Add custom shift
+            if (customShift != null && model.CustomShiftDays != null)
+            {
+                foreach (var day in model.CustomShiftDays)
+                {
+                    selectedAvailabilities.Add(new Availability
+                    {
+                        UserId = userId,
+                        ShiftId = customShift.ShiftId,
+                        DayOfWeek = day
+                    });
+                }
+            }
+
+            // Remove old availability and save new
+            _context.Availabilities.RemoveRange(_context.Availabilities.Where(a => a.UserId == userId));
+            _context.Availabilities.AddRange(selectedAvailabilities);
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction("Index");
+        }
+
+
+        [Authorize(Roles = "Instructor")]
+        [HttpPost]
+        public async Task<IActionResult> AddInstructorShift(TimeSpan startTime, TimeSpan endTime)
+        {
+            if (startTime >= endTime)
+                return Content("Start time must be before end time.");
+
+            var exists = await _context.Shifts
+                .AnyAsync(s => s.StartTime == startTime && s.EndTime == endTime);
+
+            if (exists)
+                return Content("That shift already exists.");
+            var maxTime = new TimeSpan(22, 0, 0); // 10 PM
+            if (startTime > maxTime || endTime > maxTime)
+                return Content("Shifts cannot start or end after 10 PM.");
+
+            _context.Shifts.Add(new Shift { StartTime = startTime, EndTime = endTime });
+            await _context.SaveChangesAsync();
+
+            return Content("Shift added successfully.");
+        }
+
+
     }
 }

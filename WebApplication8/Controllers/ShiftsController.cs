@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -54,16 +55,35 @@ namespace WebApplication8.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("ShiftId,StartTime,EndTime")] Shift shift)
+        public async Task<IActionResult> Create([Bind("StartTime,EndTime")] Shift shift)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
+                return View(shift);
+
+            if (shift.StartTime >= shift.EndTime)
             {
-                _context.Add(shift);
-                await _context.SaveChangesAsync();
+                ModelState.AddModelError("", "Start time must be earlier than end time.");
+                return View(shift);
+            }
+
+            // ✅ Check if a shift already exists
+            var existing = await _context.Shifts
+                .FirstOrDefaultAsync(s => s.StartTime == shift.StartTime && s.EndTime == shift.EndTime);
+
+            if (existing != null)
+            {
+                TempData["Message"] = $"Shift from {shift.StartTime:hh\\:mm} to {shift.EndTime:hh\\:mm} already exists.";
                 return RedirectToAction(nameof(Index));
             }
-            return View(shift);
+
+            // ✅ Add new shift
+            _context.Shifts.Add(shift);
+            await _context.SaveChangesAsync();
+
+            TempData["Message"] = $"Shift from {shift.StartTime:hh\\:mm} to {shift.EndTime:hh\\:mm} added successfully.";
+            return RedirectToAction(nameof(Index));
         }
+
 
         // GET: Shifts/Edit/5
         public async Task<IActionResult> Edit(int? id)
@@ -153,5 +173,8 @@ namespace WebApplication8.Controllers
         {
             return _context.Shifts.Any(e => e.ShiftId == id);
         }
+
+
+
     }
 }

@@ -139,4 +139,22 @@ namespace WebApplication8.Models
         [Compare("Password", ErrorMessage = "Passwords do not match.")]
         public string ConfirmPassword { get; set; }
     }
+    public class DayShiftSelection
+    {
+        public DayOfWeek Day { get; set; }
+        public List<int> SelectedShiftIds { get; set; } = new List<int>();
+        public List<Shift>? AvailableShifts { get; set; }
+    }
+
+    public class AvailabilityFormViewModel
+    {
+        public List<DayShiftSelection> WeekAvailability { get; set; } = new();
+        public TimeSpan? CustomStart { get; set; }
+        public TimeSpan? CustomEnd { get; set; }
+
+        // ✅ NEW: List of selected days for custom shift
+        public List<DayOfWeek> CustomShiftDays { get; set; } = new();
+    }
+
+
 }

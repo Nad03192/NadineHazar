@@ -1,0 +1,159 @@
+﻿@model WebApplication8.Models.AvailabilityFormViewModel
+@{
+    ViewData["Title"] = "Enter Weekly Availability";
+    var requiredTime = ViewBag.LoadedTimeMinutes ?? 0;
+}
+
+<h2>@ViewData["Title"]</h2>
+
+<div id="remainingTimeDisplay" class="alert alert-warning mb-3">
+    Remaining Required Time: @requiredTime minutes
+</div>
+
+<form id="availabilityForm" asp-action="EnterWeeklyAvailability" method="post">
+    @for (int i = 0; i < Model.WeekAvailability.Count; i++)
+    {
+        var dayBlock = Model.WeekAvailability[i];
+        <div class="card mb-3 day-block" data-day="@dayBlock.Day">
+            <div class="card-header"><strong>@dayBlock.Day</strong></div>
+
+            <!-- Hidden input to bind DayOfWeek -->
+            <input type="hidden" name="WeekAvailability[@i].Day" value="@dayBlock.Day" />
+
+            <div class="card-body">
+                @if (dayBlock.AvailableShifts != null)
+                {
+                    foreach (var shift in dayBlock.AvailableShifts)
+                    {
+                        var minutes = (int)(shift.EndTime - shift.StartTime).TotalMinutes;
+                        <div class="form-check">
+                            <input class="form-check-input shift-checkbox"
+                                   type="checkbox"
+                                   name="WeekAvailability[@i].SelectedShiftIds"
+                                   value="@shift.ShiftId"
+                                   data-duration="@minutes"
+                                   data-start="@shift.StartTime.TotalMinutes"
+                                   data-end="@shift.EndTime.TotalMinutes"
+                                   data-day="@dayBlock.Day"
+                                   id="shift_@(dayBlock.Day)_@shift.ShiftId" />
+                            <label class="form-check-label" for="shift_@(dayBlock.Day)_@shift.ShiftId">
+                                @shift.StartTime - @shift.EndTime (@minutes min)
+                            </label>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    }
+
+
+    <div class="mt-3 text-end">
+        <button type="submit" id="submitButton" class="btn btn-primary">Save Weekly Availability</button>
+    </div>
+</form>
+
+<hr />
+
+<!-- Optional Custom Shift Form -->
+<div class="card mb-4">
+    <div class="card-header">Add Custom Shift</div>
+    <div class="card-body row">
+        <form id="customShiftForm" method="post" class="row g-3">
+            @Html.AntiForgeryToken()
+            <div class="col-md-6">
+                <label for="startTime">Start Time</label>
+                <input id="startTime" name="startTime" type="time" class="form-control" required />
+            </div>
+            <div class="col-md-6">
+                <label for="endTime">End Time</label>
+                <input id="endTime" name="endTime" type="time" class="form-control" required />
+            </div>
+            <div class="col-12 text-end">
+                <button type="submit" class="btn btn-success mt-3">Add This Shift</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="shiftMessage" class="mt-2"></div>
+
+@section Scripts {
+    <script>
+        const loadedTimeMinutes = @requiredTime;
+        let selectedMinutes = 0;
+
+        const display = document.getElementById('remainingTimeDisplay');
+        const submitBtn = document.getElementById('submitButton');
+        const shiftCheckboxes = document.querySelectorAll('.shift-checkbox');
+
+        function updateRemainingTime() {
+            const remaining = Math.max(loadedTimeMinutes - selectedMinutes, 0);
+            const hours = Math.floor(remaining / 60);
+            const mins = remaining % 60;
+            display.innerText = `Remaining Required Time: ${hours}h ${mins}m`;
+            submitBtn.disabled = remaining > 0;
+        }
+
+        function isOverlapping(s1, e1, s2, e2) {
+            return !(e1 <= s2 || s1 >= e2);
+        }
+
+        function updateCheckboxStates() {
+            const remaining = loadedTimeMinutes - selectedMinutes;
+
+            shiftCheckboxes.forEach(cb => {
+                if (cb.checked) return;
+
+                const duration = parseInt(cb.dataset.duration);
+                const cbStart = parseFloat(cb.dataset.start);
+                const cbEnd = parseFloat(cb.dataset.end);
+                const cbDay = cb.dataset.day;
+
+                let overlaps = false;
+                shiftCheckboxes.forEach(other => {
+                    if (!other.checked || other.dataset.day !== cbDay) return;
+                    const oStart = parseFloat(other.dataset.start);
+                    const oEnd = parseFloat(other.dataset.end);
+                    if (isOverlapping(cbStart, cbEnd, oStart, oEnd)) overlaps = true;
+                });
+
+                cb.disabled = overlaps || duration > remaining;
+            });
+        }
+
+        shiftCheckboxes.forEach(cb => {
+            cb.addEventListener("change", () => {
+                const duration = parseInt(cb.dataset.duration);
+                selectedMinutes += cb.checked ? duration : -duration;
+                updateRemainingTime();
+                updateCheckboxStates();
+            });
+        });
+
+        updateRemainingTime();
+        updateCheckboxStates();
+
+        // AJAX for adding custom shift
+        document.getElementById("customShiftForm").addEventListener("submit", async function(e) {
+            e.preventDefault();
+
+            const start = document.getElementById("startTime").value;
+            const end = document.getElementById("endTime").value;
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+            const body = new URLSearchParams();
+            body.append("__RequestVerificationToken", token);
+            body.append("startTime", start);
+            body.append("endTime", end);
+
+            const response = await fetch("/Availabilities/AddInstructorShift", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: body
+            });
+
+            const message = await response.text();
+            document.getElementById("shiftMessage").innerHTML = `<div class="alert alert-info">${message}</div>`;
+        });
+    </script>
+}
