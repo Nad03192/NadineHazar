@@ -1,0 +1,43 @@
+﻿@model List<WebApplication8.Models.Class>
+
+@{
+    ViewData["Title"] = "My Schedule";
+}
+
+<h2>My Schedule</h2>
+
+@if (!Model.Any())
+{
+    <p>You have no scheduled classes yet.</p>
+    <a asp-controller="Schedules" asp-action="Index" class="btn btn-primary">
+      Generate Schedule
+    </a>
+
+}
+else
+{
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Course</th>
+                <th>Day</th>
+                <th>Start Time</th>
+                <th>End Time</th>
+                <th>Room</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in Model)
+            {
+                <tr>
+                    <td>@c.Course.Name</td>
+                    <td>@c.DayOfWeek</td>
+                    <td>@c.StartTime.ToString(@"hh\:mm")</td>
+                    <td>@((c.StartTime + TimeSpan.FromHours(c.Course.CreditNumber)).ToString(@"hh\:mm"))</td>
+
+                    <td>@c.Room.Name</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
