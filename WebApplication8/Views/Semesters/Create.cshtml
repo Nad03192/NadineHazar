@@ -1,0 +1,73 @@
+﻿@model WebApplication8.Models.Semester
+
+@{
+    ViewData["Title"] = "Create";
+}
+
+<h1>Create</h1>
+
+<h4>Semester</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label asp-for="Name" class="control-label"></label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="StartDate" class="control-label"></label>
+                <input asp-for="StartDate" class="form-control" />
+                <span asp-validation-for="StartDate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="EndDate" class="control-label"></label>
+                <input asp-for="EndDate" class="form-control" />
+                <span asp-validation-for="EndDate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="EnrollmentStart" class="control-label"></label>
+                <input asp-for="EnrollmentStart" class="form-control" />
+                <span asp-validation-for="EnrollmentStart" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="EnrollmentEnd" class="control-label"></label>
+                <input asp-for="EnrollmentEnd" class="form-control" />
+                <span asp-validation-for="EnrollmentEnd" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="AddDropStart" class="control-label"></label>
+                <input asp-for="AddDropStart" class="form-control" />
+                <span asp-validation-for="AddDropStart" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="AddDropEnd" class="control-label"></label>
+                <input asp-for="AddDropEnd" class="form-control" />
+                <span asp-validation-for="AddDropEnd" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SubmitClassesEnd" class="control-label"></label>
+                <input asp-for="SubmitClassesEnd" class="form-control" />
+                <span asp-validation-for="SubmitClassesEnd" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SubmitGradesEnd" class="control-label"></label>
+                <input asp-for="SubmitGradesEnd" class="form-control" />
+                <span asp-validation-for="SubmitGradesEnd" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Create" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

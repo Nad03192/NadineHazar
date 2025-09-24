@@ -3,8 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebApplication8.Data;
 using WebApplication8.Models;
-using Microsoft.AspNetCore.Identity;
-using WebApplication8.Controllers;
 using Microsoft.AspNetCore.Authorization;
 
 
@@ -26,7 +24,7 @@ namespace WebApplication8.Controllers
             return View();
         }
 
-    
+
         [HttpGet]
         [Authorize]
         public IActionResult GenerateSchedule()
@@ -34,10 +32,6 @@ namespace WebApplication8.Controllers
             var instructorId = _userManager.GetUserId(User);
             if (string.IsNullOrEmpty(instructorId))
                 return Json(new { success = false, message = "Instructor not logged in." });
-
-            var instructorExists = _context.Users.Any(u => u.Id == instructorId);
-            if (!instructorExists)
-                return Json(new { success = false, message = "Instructor not found." });
 
             var availabilities = _context.Availabilities
                 .Include(a => a.Shift)
@@ -51,8 +45,6 @@ namespace WebApplication8.Controllers
             int maxHours = loadedTime?.HoursPerWeek ?? 20;
 
             var totalAvailableHours = availabilities.Sum(a => (a.Shift.EndTime - a.Shift.StartTime).TotalHours);
-
-            // 🚨 If availability < loaded time, stop
             if (totalAvailableHours < maxHours)
             {
                 return Json(new
@@ -68,6 +60,7 @@ namespace WebApplication8.Controllers
                 .ToList();
 
             var allRooms = _context.Rooms.ToList();
+
             var existingClassesDb = _context.Classes
                 .Where(c => c.UserId == instructorId)
                 .Include(c => c.Course)
@@ -77,68 +70,67 @@ namespace WebApplication8.Controllers
             int availableToSchedule = maxHours - assignedHours;
 
             var random = new Random();
-            const int maxRetries = 20; // limit attempts to avoid infinite loop
+            const int maxRetries = 20;
 
-            for (int attempt = 1; attempt <= maxRetries; attempt++)
+            var roomSchedulesByDay = _context.Classes
+                .Include(c => c.Course)
+                .GroupBy(c => new { c.RoomId, c.DayOfWeek })
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            for (int attempt = 0; attempt <= maxRetries; attempt++)
             {
                 var schedule = new List<GeneratedClassViewModel>();
-                var existingClasses = new List<Class>(existingClassesDb); // work on a copy
+                var existingClasses = new List<Class>(existingClassesDb);
                 int totalScheduledHours = 0;
 
-                // try to build schedule
-                while (totalScheduledHours < availableToSchedule)
+                // Shuffle courses to randomize order
+                var schedulableCourses = instructorCourses.OrderBy(_ => random.Next()).ToList();
+
+                foreach (var course in schedulableCourses)
                 {
-                    bool anyCourseScheduled = false;
-
-                    foreach (var course in instructorCourses.OrderBy(_ => random.Next()))
+                    // Try scheduling this course as many times as possible until we reach availableToSchedule
+                    while (totalScheduledHours + course.CreditNumber <= availableToSchedule)
                     {
-                        if (totalScheduledHours + course.CreditNumber > availableToSchedule)
-                            continue;
+                        bool scheduled = false;
 
-                        var shuffledAvailability = availabilities.OrderBy(a => random.Next()).ToList();
-
-                        foreach (var availability in shuffledAvailability)
+                        foreach (var availability in availabilities.OrderBy(_ => random.Next()))
                         {
                             var day = availability.DayOfWeek;
                             var shiftStart = availability.Shift.StartTime;
                             var shiftEnd = availability.Shift.EndTime;
 
-                            var possibleStartTimes = new List<TimeSpan>();
+                            // Generate all possible start times in 30-minute steps
                             for (var ts = shiftStart; ts.Add(TimeSpan.FromHours(course.CreditNumber)) <= shiftEnd; ts = ts.Add(TimeSpan.FromMinutes(30)))
-                                possibleStartTimes.Add(ts);
-
-                            foreach (var startTime in possibleStartTimes.OrderBy(_ => random.Next()))
                             {
-                                var endTime = startTime.Add(TimeSpan.FromHours(course.CreditNumber));
+                                var endTime = ts.Add(TimeSpan.FromHours(course.CreditNumber));
 
-                                // Check instructor conflict
                                 bool instructorConflict = existingClasses.Any(c =>
                                     c.DayOfWeek == day &&
-                                    TimeOverlaps(c.StartTime, c.StartTime.Add(TimeSpan.FromHours(c.Course.CreditNumber)), startTime, endTime));
+                                    TimeOverlaps(c.StartTime, c.StartTime.Add(TimeSpan.FromHours(c.Course.CreditNumber)), ts, endTime));
 
-                                if (instructorConflict) continue;
+                                if (instructorConflict)
+                                    continue;
 
-                                // Check available room
                                 var availableRoom = allRooms.FirstOrDefault(room =>
                                 {
-                                    var roomClasses = _context.Classes
-                                        .Where(c => c.RoomId == room.RoomId && c.DayOfWeek == day)
-                                        .Include(c => c.Course)
-                                        .ToList();
+                                    var key = new { RoomId = room.RoomId, DayOfWeek = day };
+                                    if (!roomSchedulesByDay.TryGetValue(key, out var roomClasses))
+                                        return true;
 
                                     return !roomClasses.Any(c =>
-                                        TimeOverlaps(c.StartTime, c.StartTime.Add(TimeSpan.FromHours(c.Course.CreditNumber)), startTime, endTime));
+                                        TimeOverlaps(c.StartTime, c.StartTime.Add(TimeSpan.FromHours(c.Course.CreditNumber)), ts, endTime));
                                 });
 
-                                if (availableRoom == null) continue;
+                                if (availableRoom == null)
+                                    continue;
 
-                                // Assign class
+                                // Schedule the course
                                 schedule.Add(new GeneratedClassViewModel
                                 {
                                     CourseId = course.CourseId,
                                     CourseName = course.Name,
                                     DayOfWeek = day,
-                                    StartTime = startTime,
+                                    StartTime = ts,
                                     RoomId = availableRoom.RoomId,
                                     RoomName = availableRoom.Name
                                 });
@@ -147,39 +139,36 @@ namespace WebApplication8.Controllers
                                 {
                                     Course = course,
                                     DayOfWeek = day,
-                                    StartTime = startTime,
+                                    StartTime = ts,
                                     RoomId = availableRoom.RoomId,
                                     UserId = instructorId
                                 });
 
                                 totalScheduledHours += course.CreditNumber;
-                                anyCourseScheduled = true;
-                                break;
+                                scheduled = true;
+                                break; // stop checking this availability once scheduled
                             }
 
-                            if (anyCourseScheduled) break;
+                            if (scheduled)
+                                break;
                         }
 
-                        if (totalScheduledHours >= availableToSchedule) break;
+                        if (!scheduled)
+                            break; // cannot schedule this course anymore
                     }
-
-                    if (!anyCourseScheduled) break;
                 }
 
-                // ✅ Success if full schedule covered
                 if (totalScheduledHours == availableToSchedule)
                 {
                     return Json(new { success = true, schedule });
                 }
-
-                // ❌ Otherwise retry
             }
 
-            // 🚨 Failed after maxRetries
             return Json(new
             {
                 success = false,
-                message = $"Could not generate a full schedule after {maxRetries} attempts. Please try again later."
+                partial = true,
+                message = $"Could not generate a full schedule after {maxRetries} attempts."
             });
         }
 
@@ -200,6 +189,16 @@ namespace WebApplication8.Controllers
             if (schedule == null || !schedule.Any())
                 return Json(new { success = false, message = "No schedule provided." });
 
+            // Get the semester with SubmitClassesEnd nearest to today (future)
+            var now = DateTime.Now;
+            var nearestSemester = _context.Semesters
+                .Where(s => s.SubmitClassesEnd >= now) // only future or ongoing
+                .OrderBy(s => s.SubmitClassesEnd)
+                .FirstOrDefault();
+
+            if (nearestSemester == null)
+                return Json(new { success = false, message = "No semester available for scheduling." });
+
             foreach (var item in schedule)
             {
                 _context.Classes.Add(new Class
@@ -208,13 +207,15 @@ namespace WebApplication8.Controllers
                     DayOfWeek = item.DayOfWeek,
                     StartTime = item.StartTime,
                     RoomId = item.RoomId,
-                    UserId = instructorId
+                    UserId = instructorId,
+                    SemesterId = nearestSemester.SemesterId // assign nearest semester
                 });
             }
             _context.SaveChanges();
 
-            return Json(new { success = true });
+            return Json(new { success = true, semester = nearestSemester.Name });
         }
+
 
 
         [Authorize] // ensure only logged-in instructors can access

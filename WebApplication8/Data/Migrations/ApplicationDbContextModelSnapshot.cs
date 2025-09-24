@@ -167,12 +167,10 @@ namespace WebApplication8.Data.Migrations
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
                 {
                     b.Property<string>("LoginProvider")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("ProviderKey")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("ProviderDisplayName")
                         .HasColumnType("nvarchar(max)");
@@ -209,12 +207,10 @@ namespace WebApplication8.Data.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("LoginProvider")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Name")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Value")
                         .HasColumnType("nvarchar(max)");
@@ -268,6 +264,9 @@ namespace WebApplication8.Data.Migrations
                     b.Property<int>("RoomId")
                         .HasColumnType("int");
 
+                    b.Property<int>("SemesterId")
+                        .HasColumnType("int");
+
                     b.Property<TimeSpan>("StartTime")
                         .HasColumnType("time");
 
@@ -280,6 +279,8 @@ namespace WebApplication8.Data.Migrations
                     b.HasIndex("CourseId");
 
                     b.HasIndex("RoomId");
+
+                    b.HasIndex("SemesterId");
 
                     b.HasIndex("UserId");
 
@@ -302,11 +303,127 @@ namespace WebApplication8.Data.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.HasKey("CourseId");
 
+                    b.HasIndex("Name")
+                        .IsUnique();
+
                     b.ToTable("Courses");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.CoursePrerequisite", b =>
+                {
+                    b.Property<int>("CourseId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PrerequisiteId")
+                        .HasColumnType("int");
+
+                    b.HasKey("CourseId", "PrerequisiteId");
+
+                    b.HasIndex("PrerequisiteId");
+
+                    b.ToTable("CoursePrerequisites");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.CourseType", b =>
+                {
+                    b.Property<int>("CourseTypeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CourseTypeId"));
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("CourseTypeId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("CourseTypes");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.Enrollment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ClassId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("EnrollmentDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClassId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Enrollments");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.Faculty", b =>
+                {
+                    b.Property<int>("FacultyId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("FacultyId"));
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("FacultyId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Faculties");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.GradeDefinition", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<double>("Coefficient")
+                        .HasColumnType("float");
+
+                    b.Property<int>("CourseId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourseId");
+
+                    b.ToTable("GradeDefinitions");
                 });
 
             modelBuilder.Entity("WebApplication8.Models.InstructorCourse", b =>
@@ -346,6 +463,41 @@ namespace WebApplication8.Data.Migrations
                     b.ToTable("LoadedTimes");
                 });
 
+            modelBuilder.Entity("WebApplication8.Models.ProgramCourse", b =>
+                {
+                    b.Property<int>("StudyProgramId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CourseId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CourseTypeId")
+                        .HasColumnType("int");
+
+                    b.HasKey("StudyProgramId", "CourseId");
+
+                    b.HasIndex("CourseId");
+
+                    b.HasIndex("CourseTypeId");
+
+                    b.ToTable("ProgramCourses");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.ProgramManager", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("StudyProgramId")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserId", "StudyProgramId");
+
+                    b.HasIndex("StudyProgramId");
+
+                    b.ToTable("ProgramManager");
+                });
+
             modelBuilder.Entity("WebApplication8.Models.Room", b =>
                 {
                     b.Property<int>("RoomId")
@@ -362,11 +514,58 @@ namespace WebApplication8.Data.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.HasKey("RoomId");
 
+                    b.HasIndex("Name")
+                        .IsUnique();
+
                     b.ToTable("Rooms");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.Semester", b =>
+                {
+                    b.Property<int>("SemesterId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SemesterId"));
+
+                    b.Property<DateTime>("AddDropEnd")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("AddDropStart")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EnrollmentEnd")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EnrollmentStart")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("SubmitClassesEnd")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("SubmitGradesEnd")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("SemesterId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Semesters");
                 });
 
             modelBuilder.Entity("WebApplication8.Models.Shift", b =>
@@ -386,6 +585,75 @@ namespace WebApplication8.Data.Migrations
                     b.HasKey("ShiftId");
 
                     b.ToTable("Shifts");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.StudentGrade", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("EnrollmentId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("GradeDefinitionId")
+                        .HasColumnType("int");
+
+                    b.Property<double?>("Score")
+                        .HasColumnType("float");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnrollmentId");
+
+                    b.HasIndex("GradeDefinitionId");
+
+                    b.ToTable("StudentGrades");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.StudyProgram", b =>
+                {
+                    b.Property<int>("StudyProgramId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("StudyProgramId"));
+
+                    b.Property<int>("FacultyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("TotalCredits")
+                        .HasColumnType("int");
+
+                    b.HasKey("StudyProgramId");
+
+                    b.HasIndex("FacultyId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("StudyPrograms");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.UserProgram", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("StudyProgramId")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserId", "StudyProgramId");
+
+                    b.HasIndex("StudyProgramId");
+
+                    b.ToTable("UserPrograms");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -463,13 +731,61 @@ namespace WebApplication8.Data.Migrations
                     b.HasOne("WebApplication8.Models.Course", "Course")
                         .WithMany("Classes")
                         .HasForeignKey("CourseId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("WebApplication8.Models.Room", "Room")
                         .WithMany("Classes")
                         .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WebApplication8.Models.Semester", "Semester")
+                        .WithMany("Classes")
+                        .HasForeignKey("SemesterId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Course");
+
+                    b.Navigation("Room");
+
+                    b.Navigation("Semester");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.CoursePrerequisite", b =>
+                {
+                    b.HasOne("WebApplication8.Models.Course", "Course")
+                        .WithMany("Prerequisites")
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WebApplication8.Models.Course", "Prerequisite")
+                        .WithMany("IsPrerequisiteFor")
+                        .HasForeignKey("PrerequisiteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Course");
+
+                    b.Navigation("Prerequisite");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.Enrollment", b =>
+                {
+                    b.HasOne("WebApplication8.Models.Class", "Class")
+                        .WithMany("Enrollments")
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
@@ -478,17 +794,26 @@ namespace WebApplication8.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Course");
-
-                    b.Navigation("Room");
+                    b.Navigation("Class");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.GradeDefinition", b =>
+                {
+                    b.HasOne("WebApplication8.Models.Course", "Course")
+                        .WithMany("GradeDefinitions")
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Course");
                 });
 
             modelBuilder.Entity("WebApplication8.Models.InstructorCourse", b =>
                 {
                     b.HasOne("WebApplication8.Models.Course", "Course")
-                        .WithMany()
+                        .WithMany("InstructorCourses")
                         .HasForeignKey("CourseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -515,9 +840,134 @@ namespace WebApplication8.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("WebApplication8.Models.ProgramCourse", b =>
+                {
+                    b.HasOne("WebApplication8.Models.Course", "Course")
+                        .WithMany("ProgramCourses")
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("WebApplication8.Models.CourseType", "CourseType")
+                        .WithMany("ProgramCourses")
+                        .HasForeignKey("CourseTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("WebApplication8.Models.StudyProgram", "StudyProgram")
+                        .WithMany("ProgramCourses")
+                        .HasForeignKey("StudyProgramId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Course");
+
+                    b.Navigation("CourseType");
+
+                    b.Navigation("StudyProgram");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.ProgramManager", b =>
+                {
+                    b.HasOne("WebApplication8.Models.StudyProgram", "StudyProgram")
+                        .WithMany()
+                        .HasForeignKey("StudyProgramId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StudyProgram");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.StudentGrade", b =>
+                {
+                    b.HasOne("WebApplication8.Models.Enrollment", "Enrollment")
+                        .WithMany("Grades")
+                        .HasForeignKey("EnrollmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("WebApplication8.Models.GradeDefinition", "GradeDefinition")
+                        .WithMany()
+                        .HasForeignKey("GradeDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Enrollment");
+
+                    b.Navigation("GradeDefinition");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.StudyProgram", b =>
+                {
+                    b.HasOne("WebApplication8.Models.Faculty", "Faculty")
+                        .WithMany("StudyPrograms")
+                        .HasForeignKey("FacultyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Faculty");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.UserProgram", b =>
+                {
+                    b.HasOne("WebApplication8.Models.StudyProgram", "StudyProgram")
+                        .WithMany("UserPrograms")
+                        .HasForeignKey("StudyProgramId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StudyProgram");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.Class", b =>
+                {
+                    b.Navigation("Enrollments");
+                });
+
             modelBuilder.Entity("WebApplication8.Models.Course", b =>
                 {
                     b.Navigation("Classes");
+
+                    b.Navigation("GradeDefinitions");
+
+                    b.Navigation("InstructorCourses");
+
+                    b.Navigation("IsPrerequisiteFor");
+
+                    b.Navigation("Prerequisites");
+
+                    b.Navigation("ProgramCourses");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.CourseType", b =>
+                {
+                    b.Navigation("ProgramCourses");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.Enrollment", b =>
+                {
+                    b.Navigation("Grades");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.Faculty", b =>
+                {
+                    b.Navigation("StudyPrograms");
                 });
 
             modelBuilder.Entity("WebApplication8.Models.Room", b =>
@@ -525,9 +975,21 @@ namespace WebApplication8.Data.Migrations
                     b.Navigation("Classes");
                 });
 
+            modelBuilder.Entity("WebApplication8.Models.Semester", b =>
+                {
+                    b.Navigation("Classes");
+                });
+
             modelBuilder.Entity("WebApplication8.Models.Shift", b =>
                 {
                     b.Navigation("Availabilities");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.StudyProgram", b =>
+                {
+                    b.Navigation("ProgramCourses");
+
+                    b.Navigation("UserPrograms");
                 });
 #pragma warning restore 612, 618
         }
