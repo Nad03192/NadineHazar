@@ -109,6 +109,7 @@ namespace WebApplication8.Data
                 .OnDelete(DeleteBehavior.Restrict); // prevent multiple cascade paths
 
             // -------------------- STUDENT GRADE --------------------
+        
             modelBuilder.Entity<StudentGrade>()
                 .HasOne(sg => sg.Enrollment)
                 .WithMany(e => e.Grades)
@@ -118,6 +119,12 @@ namespace WebApplication8.Data
                 .HasOne(sg => sg.GradeDefinition)
                 .WithMany()
                 .HasForeignKey(sg => sg.GradeDefinitionId);
+
+            // Enforce uniqueness: One Enrollment + GradeDefinition can only have one grade
+            modelBuilder.Entity<StudentGrade>()
+                .HasIndex(sg => new { sg.EnrollmentId, sg.GradeDefinitionId })
+                .IsUnique();
+
 
             // -------------------- INSTRUCTOR COURSE --------------------
             modelBuilder.Entity<InstructorCourse>()

@@ -1,6 +1,7 @@
 ﻿@{
     ViewData["Title"] = "Instructor Home";
 }
+@using Microsoft.AspNetCore.Identity
 
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
 
@@ -16,14 +17,32 @@
         <i class="fas fa-calendar-alt fa-2x mb-2"></i>
         <div>My Schedule</div>
     </a>
-
-
     <a asp-area="Instructor" asp-controller="Courses" asp-action="MyCourses" class="dashboard-box text-decoration-none">
         <i class="fas fa-book-reader fa-2x mb-2"></i>
         <div>My Classes</div>
     </a>
-
+    <a asp-action="Index" asp-controller="StudentGrades" class="dashboard-box text-decoration-none">
+        <i class="fas fa-graduation-cap fa-2x mb-2"></i>
+        <div>Student Grades</div>
+    </a>
 </div>
+
+@if (User.IsInRole("ProgramManager"))
+{
+    <h4 class="mt-4">📘 Course & Curriculum</h4>
+    <div class="d-flex flex-wrap gap-4">
+      
+        <a asp-action="Index" asp-controller="CourseTypes" class="dashboard-box text-decoration-none">
+            <i class="fas fa-tags fa-2x mb-2"></i>
+            <div>Course Types</div>
+        </a>
+        <a asp-action="Index" asp-controller="ProgramCourses" class="dashboard-box text-decoration-none">
+            <i class="fas fa-project-diagram fa-2x mb-2"></i>
+            <div>Program Courses</div>
+        </a>
+       
+    </div>
+}
 
 <style>
     .dashboard-box {

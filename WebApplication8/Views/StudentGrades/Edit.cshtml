@@ -1,33 +1,39 @@
 ﻿@model WebApplication8.Models.StudentGrade
 
 @{
-    ViewData["Title"] = "Edit";
+    ViewData["Title"] = "Edit Student Grade";
 }
 
-<h1>Edit</h1>
+<h1>Edit Student Grade</h1>
 
-<h4>StudentGrade</h4>
 <hr />
 <div class="row">
-    <div class="col-md-4">
+    <div class="col-md-6">
         <form asp-action="Edit">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <!-- ✅ Show all validation errors (e.g. duplicate grade) -->
+            <div asp-validation-summary="All" class="text-danger"></div>
+
             <input type="hidden" asp-for="Id" />
+
             <div class="form-group">
                 <label asp-for="EnrollmentId" class="control-label"></label>
+                <!-- ✅ Enrollment dropdown will now show Student + Course -->
                 <select asp-for="EnrollmentId" class="form-control" asp-items="ViewBag.EnrollmentId"></select>
                 <span asp-validation-for="EnrollmentId" class="text-danger"></span>
             </div>
+
             <div class="form-group">
                 <label asp-for="GradeDefinitionId" class="control-label"></label>
                 <select asp-for="GradeDefinitionId" class="form-control" asp-items="ViewBag.GradeDefinitionId"></select>
                 <span asp-validation-for="GradeDefinitionId" class="text-danger"></span>
             </div>
+
             <div class="form-group">
                 <label asp-for="Score" class="control-label"></label>
                 <input asp-for="Score" class="form-control" />
                 <span asp-validation-for="Score" class="text-danger"></span>
             </div>
+
             <div class="form-group">
                 <input type="submit" value="Save" class="btn btn-primary" />
             </div>
@@ -40,5 +46,48 @@
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script>
+        // Function to load grade definitions for selected enrollment
+        function loadGradeDefinitions(enrollmentId, selectedGradeId = null) {
+            const gradeSelect = document.getElementById("GradeDefinitionId");
+            if (!enrollmentId) {
+                gradeSelect.innerHTML = '<option value="">-- Select Grade Definition --</option>';
+                return;
+            }
+
+            fetch(`/StudentGrades/GetGradeDefinitions?enrollmentId=${enrollmentId}`)
+                .then(response => response.json())
+                .then(data => {
+                    gradeSelect.innerHTML = '<option value="">-- Select Grade Definition --</option>';
+                    data.forEach(g => {
+                        const opt = document.createElement("option");
+                        opt.value = g.id;
+                        opt.text = g.name;
+                        if (selectedGradeId && g.id === selectedGradeId) {
+                            opt.selected = true;
+                        }
+                        gradeSelect.add(opt);
+                    });
+                })
+                .catch(err => console.error(err));
+        }
+
+        const enrollmentDropdown = document.getElementById("EnrollmentId");
+        enrollmentDropdown.addEventListener("change", function () {
+            loadGradeDefinitions(this.value);
+        });
+
+        // On page load, populate grade definitions for the current enrollment
+        document.addEventListener("DOMContentLoaded", function () {
+            const selectedEnrollmentId = enrollmentDropdown.value;
+            const selectedGradeId = "@Model.GradeDefinitionId";
+            if (selectedEnrollmentId) {
+                loadGradeDefinitions(selectedEnrollmentId, parseInt(selectedGradeId));
+            }
+        });
+    </script>
 }

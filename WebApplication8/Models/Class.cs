@@ -224,7 +224,7 @@ namespace WebApplication8.Models
         public IdentityUser? User { get; set; }
 
         public int ClassId { get; set; }
-        public Class Class { get; set; }
+        public Class? Class { get; set; }
 
         public DateTime EnrollmentDate { get; set; } = DateTime.UtcNow;
 
