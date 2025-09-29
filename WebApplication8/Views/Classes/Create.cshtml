@@ -41,37 +41,32 @@
     </div>
 
     <div class="form-group">
-        <label asp-for="RoomId"></label>
+        <label asp-for="RoomId">Room</label>
         <select asp-for="RoomId" class="form-control" id="roomSelect">
             <option value="">-- Select Room --</option>
-            @foreach (var room in (SelectList)ViewData["RoomId"])
-            {
-                <option value="@room.Value">@room.Text</option>
-            }
         </select>
     </div>
 
     <button type="submit" class="btn btn-primary">Create</button>
 </form>
+
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
     <script>
-        function loadData() {
+        var getInstructorsUrl = '@Url.Action("GetEligibleInstructors", "Classes")';
+        var getRoomsUrl = '@Url.Action("GetAvailableRooms", "Classes")';
+
+        function loadInstructors() {
             var courseId = $('#courseSelect').val();
             var startTime = $('#startTimeInput').val();
             var dayOfWeek = $('#dayOfWeekSelect').val();
 
-            // Load Instructors
             if (courseId && startTime && dayOfWeek) {
                 $.ajax({
-                    url: '@Url.Action("GetEligibleInstructors", "Classes")',
+                    url: getInstructorsUrl,
                     type: 'GET',
-                    data: {
-                        courseId: courseId,
-                        newStartTime: startTime,
-                        dayOfWeek: dayOfWeek
-                    },
+                    data: { courseId: courseId, newStartTime: startTime, dayOfWeek: dayOfWeek },
                     success: function (data) {
                         var instructorSelect = $('#instructorSelect');
                         instructorSelect.empty();
@@ -79,6 +74,7 @@
 
                         if (data.length === 0) {
                             instructorSelect.append($('<option>').val('').text('No eligible instructors available'));
+                            $('#roomSelect').empty().append($('<option>').val('').text('-- Select Room --'));
                         } else {
                             $.each(data, function (i, instructor) {
                                 instructorSelect.append($('<option>').val(instructor.value).text(instructor.text));
@@ -91,18 +87,21 @@
                 });
             } else {
                 $('#instructorSelect').empty().append($('<option>').val('').text('-- Select Instructor --'));
+                $('#roomSelect').empty().append($('<option>').val('').text('-- Select Room --'));
             }
+        }
 
-            // Load Rooms
-            if (courseId && startTime && dayOfWeek) {
+        function loadRooms() {
+            var courseId = $('#courseSelect').val();
+            var startTime = $('#startTimeInput').val();
+            var dayOfWeek = $('#dayOfWeekSelect').val();
+            var userId = $('#instructorSelect').val();
+
+            if (courseId && startTime && dayOfWeek && userId) {
                 $.ajax({
-                    url: '@Url.Action("GetAvailableRooms", "Classes")',
+                    url: getRoomsUrl,
                     type: 'GET',
-                    data: {
-                        courseId: courseId,
-                        newStartTime: startTime,
-                        dayOfWeekStr: dayOfWeek
-                    },
+                    data: { courseId: courseId, newStartTime: startTime, dayOfWeekStr: dayOfWeek, userId: userId },
                     success: function (data) {
                         var roomSelect = $('#roomSelect');
                         roomSelect.empty();
@@ -117,7 +116,7 @@
                         }
                     },
                     error: function () {
-                        alert('Error loading available rooms.');
+                        alert('Error loading rooms.');
                     }
                 });
             } else {
@@ -126,7 +125,12 @@
         }
 
         $(document).ready(function () {
-            $('#courseSelect, #startTimeInput, #dayOfWeekSelect').on('change', loadData);
+            $('#courseSelect, #startTimeInput, #dayOfWeekSelect').on('change', function() {
+                loadInstructors();
+                $('#roomSelect').empty().append($('<option>').val('').text('-- Select Room --'));
+            });
+
+            $('#instructorSelect').on('change', loadRooms);
         });
     </script>
 }

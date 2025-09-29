@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using WebApplication8.Data;
 using WebApplication8.Models;
+using System.Collections.Generic;
 
 namespace WebApplication8.Controllers
 {
@@ -21,12 +22,50 @@ namespace WebApplication8.Controllers
         }
 
         // GET: InstructorCourses
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string searchString, int pageNumber = 1, int pageSize = 10)
         {
-            var instructorCourses = _context.InstructorCourses
+            var instructorCoursesQuery = _context.InstructorCourses
                 .Include(ic => ic.Course)
-                .Include(ic => ic.User);
-            return View(await instructorCourses.ToListAsync());
+                .Include(ic => ic.User)
+                .AsQueryable();
+
+            // Search by course name or user email
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                instructorCoursesQuery = instructorCoursesQuery.Where(ic =>
+                    ic.Course.Name.Contains(searchString) ||
+                    ic.User.Email.Contains(searchString));
+            }
+
+            int totalItems = await instructorCoursesQuery.CountAsync();
+            var instructorCourses = await instructorCoursesQuery
+                .OrderBy(ic => ic.Course.Name)
+                .ThenBy(ic => ic.User.Email)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            ViewData["CurrentSearch"] = searchString;
+            ViewData["PageNumber"] = pageNumber;
+            ViewData["PageSize"] = pageSize;
+            ViewData["TotalPages"] = (int)System.Math.Ceiling(totalItems / (double)pageSize);
+
+            return View(instructorCourses);
+        }
+
+        // GET: InstructorCourses/Details/5
+        public async Task<IActionResult> Details(int? id)
+        {
+            if (id == null) return NotFound();
+
+            var instructorCourse = await _context.InstructorCourses
+                .Include(ic => ic.Course)
+                .Include(ic => ic.User)
+                .FirstOrDefaultAsync(ic => ic.Id == id);
+
+            if (instructorCourse == null) return NotFound();
+
+            return View(instructorCourse);
         }
 
         // GET: InstructorCourses/Create
@@ -34,25 +73,8 @@ namespace WebApplication8.Controllers
         {
             ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "Name");
 
-            // Get the "Instructor" role
-            var instructorRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Instructor");
-            if (instructorRole == null)
-            {
-                // Handle role not found
-                ViewData["UserId"] = new SelectList(Enumerable.Empty<IdentityUser>(), "Id", "UserName");
-                return View();
-            }
-
-            // Get users who have the "Instructor" role
-            var instructors = await _context.UserRoles
-                .Where(ur => ur.RoleId == instructorRole.Id)
-                .Join(_context.Users,
-                      ur => ur.UserId,
-                      u => u.Id,
-                      (ur, u) => u)
-                .ToListAsync();
-
-            ViewData["UserId"] = new SelectList(instructors, "Id", "UserName");
+            var instructors = await GetInstructorsAsync();
+            ViewData["UserId"] = new SelectList(instructors, "Id", "Email");
 
             return View();
         }
@@ -70,7 +92,9 @@ namespace WebApplication8.Controllers
             }
 
             ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "Name", instructorCourse.CourseId);
-            ViewData["UserId"] = new SelectList(_context.Users, "Id", "UserName", instructorCourse.UserId);
+
+            var instructors = await GetInstructorsAsync();
+            ViewData["UserId"] = new SelectList(instructors, "Id", "Email", instructorCourse.UserId);
 
             return View(instructorCourse);
         }
@@ -85,22 +109,8 @@ namespace WebApplication8.Controllers
 
             ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "Name", instructorCourse.CourseId);
 
-            var instructorRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Instructor");
-            if (instructorRole == null)
-            {
-                ViewData["UserId"] = new SelectList(Enumerable.Empty<IdentityUser>(), "Id", "UserName");
-                return View(instructorCourse);
-            }
-
-            var instructors = await _context.UserRoles
-                .Where(ur => ur.RoleId == instructorRole.Id)
-                .Join(_context.Users,
-                      ur => ur.UserId,
-                      u => u.Id,
-                      (ur, u) => u)
-                .ToListAsync();
-
-            ViewData["UserId"] = new SelectList(instructors, "Id", "UserName", instructorCourse.UserId);
+            var instructors = await GetInstructorsAsync();
+            ViewData["UserId"] = new SelectList(instructors, "Id", "Email", instructorCourse.UserId);
 
             return View(instructorCourse);
         }
@@ -130,7 +140,9 @@ namespace WebApplication8.Controllers
             }
 
             ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "Name", instructorCourse.CourseId);
-            ViewData["UserId"] = new SelectList(_context.Users, "Id", "UserName", instructorCourse.UserId);
+
+            var instructors = await GetInstructorsAsync();
+            ViewData["UserId"] = new SelectList(instructors, "Id", "Email", instructorCourse.UserId);
 
             return View(instructorCourse);
         }
@@ -169,23 +181,22 @@ namespace WebApplication8.Controllers
         {
             return _context.InstructorCourses.Any(e => e.Id == id);
         }
-        // GET: InstructorCourses/Details/5
-        public async Task<IActionResult> Details(int? id)
+
+        // Helper to get all users with Instructor role
+        private async Task<List<IdentityUser>> GetInstructorsAsync()
         {
-            if (id == null)
-                return NotFound();
+            var instructorRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Instructor");
+            if (instructorRole == null) return new List<IdentityUser>();
 
-            var instructorCourse = await _context.InstructorCourses
-                .Include(ic => ic.Course)     // Include related Course
-                .Include(ic => ic.User)       // Include related IdentityUser
-                .FirstOrDefaultAsync(ic => ic.Id == id);
+            var instructors = await _context.UserRoles
+                .Where(ur => ur.RoleId == instructorRole.Id)
+                .Join(_context.Users,
+                      ur => ur.UserId,
+                      u => u.Id,
+                      (ur, u) => u)
+                .ToListAsync();
 
-            if (instructorCourse == null)
-                return NotFound();
-
-            return View(instructorCourse);
+            return instructors;
         }
-
     }
-
 }

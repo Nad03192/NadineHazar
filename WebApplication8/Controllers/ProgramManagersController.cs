@@ -22,12 +22,27 @@ namespace WebApplication8.Controllers
             _context = context;
             _userManager = userManager;
         }
-        // GET: ProgramManagers
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string search)
         {
-            var applicationDbContext = _context.ProgramManager.Include(p => p.StudyProgram).Include(p => p.User);
-            return View(await applicationDbContext.ToListAsync());
+            var query = _context.ProgramManager
+                                .Include(pm => pm.User)
+                                .Include(pm => pm.StudyProgram)
+                                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(search))
+            {
+                query = query.Where(pm =>
+                    (pm.User != null && pm.User.Email.Contains(search)) ||
+                    (pm.StudyProgram != null && pm.StudyProgram.Name.Contains(search))
+                );
+            }
+
+            var model = await query.ToListAsync();
+            ViewBag.Search = search; // preserve the search value
+            return View(model);
         }
+
+
 
         // GET: ProgramManagers/Details/5
         public async Task<IActionResult> Details(string id)
@@ -50,12 +65,17 @@ namespace WebApplication8.Controllers
         }
 
         // GET: ProgramManagers/Create
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
-            ViewData["StudyProgramId"] = new SelectList(_context.StudyPrograms, "StudyProgramId", "Name");
-            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Id");
+            var instructors = await GetInstructorsAsync();
+
+            ViewData["UserId"] = new SelectList(instructors, "Id", "Email"); // display email
+            ViewData["StudyProgramId"] = new SelectList(await _context.StudyPrograms.ToListAsync(), "StudyProgramId", "Name");
+
             return View();
         }
+
+
 
         // POST: ProgramManagers/Create
         // To protect from overposting attacks, enable the specific properties you want to bind to.
@@ -79,10 +99,20 @@ namespace WebApplication8.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            // Re-populate the dropdowns on validation failure
+            var instructors = new List<IdentityUser>();
+            foreach (var user in _context.Users)
+            {
+                if (await _userManager.IsInRoleAsync(user, "Instructor"))
+                    instructors.Add(user);
+            }
+
+            ViewData["UserId"] = new SelectList(instructors, "Id", "Email", programManager.UserId);
             ViewData["StudyProgramId"] = new SelectList(_context.StudyPrograms, "StudyProgramId", "Name", programManager.StudyProgramId);
-            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Id", programManager.UserId);
+
             return View(programManager);
         }
+
         // GET: ProgramManagers/Edit/5
         public async Task<IActionResult> Edit(string id)
         {
@@ -172,7 +202,22 @@ namespace WebApplication8.Controllers
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
+        // Helper to get all users with Instructor role
+        private async Task<List<IdentityUser>> GetInstructorsAsync()
+        {
+            var instructorRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Instructor");
+            if (instructorRole == null) return new List<IdentityUser>();
 
+            var instructors = await _context.UserRoles
+                .Where(ur => ur.RoleId == instructorRole.Id)
+                .Join(_context.Users,
+                      ur => ur.UserId,
+                      u => u.Id,
+                      (ur, u) => u)
+                .ToListAsync();
+
+            return instructors;
+        }
         private bool ProgramManagerExists(string id)
         {
             return _context.ProgramManager.Any(e => e.UserId == id);

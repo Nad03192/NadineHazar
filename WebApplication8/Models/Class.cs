@@ -7,6 +7,49 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WebApplication8.Models
 {
+    // -------------------- CAMPUS --------------------
+    public class Campus
+    {
+        [Key]
+        public int CampusId { get; set; }
+
+        [Required]
+        public string Name { get; set; }
+
+        public string? Description { get; set; }
+
+        // Navigation properties
+        public List<Building> Buildings { get; set; } = new List<Building>();
+        public List<UserCampus> UserCampuses { get; set; } = new List<UserCampus>();
+    }
+
+
+    [Index(nameof(Name), IsUnique = true)]
+    public class Building
+    {
+        [Key]
+        public int BuildingId { get; set; }
+
+        [Required]
+        public string Name { get; set; }
+
+        public string? Description { get; set; }
+
+        // Campus relation
+        public int CampusId { get; set; }
+        public Campus? Campus { get; set; }
+
+        // Rooms in this building
+        public List<Room> Rooms { get; set; } = new List<Room>();
+    }
+    public class UserCampus
+    {
+        public string UserId { get; set; }
+        public IdentityUser? User { get; set; }
+
+        public int CampusId { get; set; }
+        public Campus? Campus { get; set; }
+    }
     // -------------------- SEMESTER --------------------
     [Index(nameof(Name), IsUnique = true)]
     public class Semester
@@ -123,7 +166,8 @@ namespace WebApplication8.Models
         public string Name { get; set; }
         public string? Description { get; set; }
         public int Capacity { get; set; }
-
+        public int BuildingId { get; set; }
+        public Building? Building { get; set; }
         public List<Class> Classes { get; set; } = new List<Class>();
     }
 
@@ -274,6 +318,14 @@ namespace WebApplication8.Models
 
 
     // -------------------- VIEW MODELS --------------------
+    public class UserViewModel
+    {
+        public string Id { get; set; }
+        public string Email { get; set; }
+        public string UserName { get; set; }
+        public string PhoneNumber { get; set; }
+        public string Role { get; set; }
+    }
     public class GeneratedClassViewModel
     {
         public int CourseId { get; set; }
@@ -294,15 +346,30 @@ namespace WebApplication8.Models
 
     public class RegisterUserViewModel
     {
-        [Required, EmailAddress]
+        [Required]
+        [Display(Name = "Username")]
+        public string UserName { get; set; }
+
+        [Required]
+        [EmailAddress]
+        [Display(Name = "Email")]
         public string Email { get; set; }
 
-        [Required, DataType(DataType.Password)]
+        [Phone]
+        [Display(Name = "Phone Number")]
+        public string PhoneNumber { get; set; }
+
+        [Required]
+        [DataType(DataType.Password)]
         public string Password { get; set; }
 
-        [Required, DataType(DataType.Password), Compare("Password", ErrorMessage = "Passwords do not match.")]
+        [Required]
+        [DataType(DataType.Password)]
+        [Compare("Password", ErrorMessage = "Passwords do not match.")]
+        [Display(Name = "Confirm Password")]
         public string ConfirmPassword { get; set; }
     }
+
 
     public class DayShiftSelection
     {
@@ -317,5 +384,30 @@ namespace WebApplication8.Models
         public TimeSpan? CustomStart { get; set; }
         public TimeSpan? CustomEnd { get; set; }
         public List<DayOfWeek> CustomShiftDays { get; set; } = new();
+    }
+
+    public class PaginatedList<T> : List<T>
+    {
+        public int PageIndex { get; private set; }
+        public int TotalPages { get; private set; }
+
+        public PaginatedList(List<T> items, int count, int pageIndex, int pageSize)
+        {
+            PageIndex = pageIndex;
+            TotalPages = (int)Math.Ceiling(count / (double)pageSize);
+
+            AddRange(items);
+        }
+
+        public bool HasPreviousPage => PageIndex > 1;
+        public bool HasNextPage => PageIndex < TotalPages;
+
+        public static async Task<PaginatedList<T>> CreateAsync(
+            IQueryable<T> source, int pageIndex, int pageSize)
+        {
+            var count = await source.CountAsync();
+            var items = await source.Skip((pageIndex - 1) * pageSize).Take(pageSize).ToListAsync();
+            return new PaginatedList<T>(items, count, pageIndex, pageSize);
+        }
     }
 }

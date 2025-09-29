@@ -26,6 +26,8 @@
                     foreach (var shift in dayBlock.AvailableShifts)
                     {
                         var minutes = (int)(shift.EndTime - shift.StartTime).TotalMinutes;
+                        var isChecked = dayBlock.SelectedShiftIds.Contains(shift.ShiftId); // ✅ pre-select if already submitted
+
                         <div class="form-check">
                             <input class="form-check-input shift-checkbox"
                                    type="checkbox"
@@ -35,7 +37,8 @@
                                    data-start="@shift.StartTime.TotalMinutes"
                                    data-end="@shift.EndTime.TotalMinutes"
                                    data-day="@dayBlock.Day"
-                                   id="shift_@(dayBlock.Day)_@shift.ShiftId" />
+                                   id="shift_@(dayBlock.Day)_@shift.ShiftId"
+                            @(isChecked ? "checked" : "") />
                             <label class="form-check-label" for="shift_@(dayBlock.Day)_@shift.ShiftId">
                                 @shift.StartTime - @shift.EndTime (@minutes min)
                             </label>
@@ -45,6 +48,7 @@
             </div>
         </div>
     }
+
 
 
     <div class="mt-3 text-end">
@@ -79,13 +83,30 @@
 
 @section Scripts {
     <script>
-        const loadedTimeMinutes = @requiredTime;
+        const loadedTimeMinutes = @requiredTime; // total required minutes
         let selectedMinutes = 0;
 
         const display = document.getElementById('remainingTimeDisplay');
         const submitBtn = document.getElementById('submitButton');
         const shiftCheckboxes = document.querySelectorAll('.shift-checkbox');
 
+        // Helper: check if two shifts overlap
+        function isOverlapping(s1, e1, s2, e2) {
+            return !(e1 <= s2 || s1 >= e2);
+        }
+
+        // Calculate total selected minutes from checked boxes
+        function calculateSelectedMinutes() {
+            let total = 0;
+            shiftCheckboxes.forEach(cb => {
+                if (cb.checked) {
+                    total += parseInt(cb.dataset.duration);
+                }
+            });
+            selectedMinutes = total;
+        }
+
+        // Update the remaining time display
         function updateRemainingTime() {
             const remaining = Math.max(loadedTimeMinutes - selectedMinutes, 0);
             const hours = Math.floor(remaining / 60);
@@ -94,15 +115,12 @@
             submitBtn.disabled = remaining > 0;
         }
 
-        function isOverlapping(s1, e1, s2, e2) {
-            return !(e1 <= s2 || s1 >= e2);
-        }
-
+        // Disable checkboxes if overlapping or exceeding remaining time
         function updateCheckboxStates() {
             const remaining = loadedTimeMinutes - selectedMinutes;
 
             shiftCheckboxes.forEach(cb => {
-                if (cb.checked) return;
+                if (cb.checked) return; // keep checked boxes enabled
 
                 const duration = parseInt(cb.dataset.duration);
                 const cbStart = parseFloat(cb.dataset.start);
@@ -110,6 +128,7 @@
                 const cbDay = cb.dataset.day;
 
                 let overlaps = false;
+
                 shiftCheckboxes.forEach(other => {
                     if (!other.checked || other.dataset.day !== cbDay) return;
                     const oStart = parseFloat(other.dataset.start);
@@ -121,17 +140,19 @@
             });
         }
 
+        // Initialize selectedMinutes from pre-checked boxes on page load
+        calculateSelectedMinutes();
+        updateRemainingTime();
+        updateCheckboxStates();
+
+        // Event listeners for all checkboxes
         shiftCheckboxes.forEach(cb => {
             cb.addEventListener("change", () => {
-                const duration = parseInt(cb.dataset.duration);
-                selectedMinutes += cb.checked ? duration : -duration;
+                calculateSelectedMinutes();
                 updateRemainingTime();
                 updateCheckboxStates();
             });
         });
-
-        updateRemainingTime();
-        updateCheckboxStates();
 
         // AJAX for adding custom shift
         document.getElementById("customShiftForm").addEventListener("submit", async function(e) {
@@ -157,3 +178,4 @@
         });
     </script>
 }
+

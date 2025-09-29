@@ -21,15 +21,27 @@
             <i class="fas fa-project-diagram fa-2x mb-2"></i>
             <div>Study Programs</div>
         </a>
+        <a asp-action="Index" asp-controller="Campus" class="dashboard-box text-decoration-none">
+            <i class="fas fa-map-marked-alt fa-2x mb-2"></i>
+            <div>Campuses</div>
+        </a>
+        <a asp-action="Index" asp-controller="Buildings" class="dashboard-box text-decoration-none">
+            <i class="fas fa-building fa-2x mb-2"></i>
+            <div>Buildings</div>
+        </a>
+        <a asp-action="Index" asp-controller="UserCampus" class="dashboard-box text-decoration-none">
+            <i class="fas fa-users fa-2x mb-2"></i>
+            <div>User Campuses</div>
+        </a>
     </div>
 </div>
 
 <div class="dashboard-section">
     <h4>👩‍🏫 Staff Management</h4>
     <div class="d-flex flex-wrap gap-4">
-        <a asp-action="CreateInstructor" asp-controller="Admin" class="dashboard-box text-decoration-none">
+        <a asp-action="Instructors" asp-controller="Admin" class="dashboard-box text-decoration-none">
             <i class="fas fa-chalkboard-teacher fa-2x mb-2"></i>
-            <div>Create Instructor</div>
+            <div>Instructors</div>
         </a>
         <a asp-action="Index" asp-controller="ProgramManagers" class="dashboard-box text-decoration-none">
             <i class="fas fa-user-tie fa-2x mb-2"></i>
@@ -91,9 +103,9 @@
 <div class="dashboard-section">
     <h4>🎓 Student Management</h4>
     <div class="d-flex flex-wrap gap-4">
-        <a asp-action="CreateStudent" asp-controller="Admin" class="dashboard-box text-decoration-none">
+        <a asp-action="Students" asp-controller="Admin" class="dashboard-box text-decoration-none">
             <i class="fas fa-user-graduate fa-2x mb-2"></i>
-            <div>Create Student</div>
+            <div>Students</div>
         </a>
         <a asp-action="Index" asp-controller="UserPrograms" class="dashboard-box text-decoration-none">
             <i class="fas fa-users fa-2x mb-2"></i>

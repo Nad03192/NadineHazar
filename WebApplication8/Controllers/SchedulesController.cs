@@ -59,7 +59,17 @@ namespace WebApplication8.Controllers
                 .Select(ic => ic.Course)
                 .ToList();
 
-            var allRooms = _context.Rooms.ToList();
+            // Get instructor's campus
+            var instructorCampusId = _context.UserCampuses
+                .Where(uc => uc.UserId == instructorId)
+                .Select(uc => uc.CampusId)
+                .FirstOrDefault();
+
+            // Filter rooms by instructor's campus
+            var allRooms = _context.Rooms
+                .Include(r => r.Building)
+                .Where(r => r.Building.CampusId == instructorCampusId)
+                .ToList();
 
             var existingClassesDb = _context.Classes
                 .Where(c => c.UserId == instructorId)

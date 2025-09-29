@@ -1,47 +1,87 @@
 ﻿@model IEnumerable<WebApplication8.Models.Room>
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Rooms";
 }
 
-<h1>Index</h1>
+<h1>Rooms</h1>
 
 <p>
     <a asp-action="Create">Create New</a>
 </p>
+
+<!-- 🔍 Search and Filters -->
+<form method="get" asp-action="Index" id="filterForm" class="mb-3">
+    <div class="row">
+        <div class="col-md-3">
+            <input type="text" name="searchString" value="@ViewData["CurrentFilter"]" class="form-control" placeholder="Search by name or description" />
+        </div>
+        <div class="col-md-3">
+            <select name="campusId" class="form-control" id="campusSelect" asp-items="ViewBag.Campuses">
+                <option value="">-- All Campuses --</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select name="buildingId" class="form-control" id="buildingSelect" asp-items="ViewBag.Buildings">
+                <option value="">-- All Buildings --</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-primary">Filter</button>
+        </div>
+    </div>
+</form>
+
 <table class="table">
     <thead>
         <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.Name)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Description)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Capacity)
-            </th>
+            <th>@Html.DisplayNameFor(model => model.Name)</th>
+            <th>@Html.DisplayNameFor(model => model.Description)</th>
+            <th>@Html.DisplayNameFor(model => model.Capacity)</th>
+            <th>Building</th>
+            <th>Campus</th>
             <th></th>
         </tr>
     </thead>
     <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.Name)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Description)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Capacity)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.RoomId">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.RoomId">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.RoomId">Delete</a>
-            </td>
-        </tr>
-}
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Name</td>
+                <td>@item.Description</td>
+                <td>@item.Capacity</td>
+                <td>@item.Building?.Name</td>
+                <td>@item.Building?.Campus?.Name</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.RoomId">Edit</a> |
+                    <a asp-action="Details" asp-route-id="@item.RoomId">Details</a> |
+                    <a asp-action="Delete" asp-route-id="@item.RoomId">Delete</a>
+                </td>
+            </tr>
+        }
     </tbody>
 </table>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // When campus changes, reload buildings dropdown dynamically
+        $('#campusSelect').on('change', function () {
+            var campusId = $(this).val();
+            var buildingSelect = $('#buildingSelect');
+            buildingSelect.empty().append('<option value="">-- All Buildings --</option>');
+
+            if (campusId) {
+                $.ajax({
+                    url: '@Url.Action("GetBuildingsByCampus", "Rooms")',
+                    data: { campusId: campusId },
+                    success: function (data) {
+                        $.each(data, function (i, building) {
+                            buildingSelect.append($('<option>').val(building.value).text(building.text));
+                        });
+                    }
+                });
+            }
+        });
+    </script>
+}

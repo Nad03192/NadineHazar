@@ -20,9 +20,37 @@ namespace WebApplication8.Controllers
         }
 
         // GET: Rooms
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string searchString, int? campusId, int? buildingId)
         {
-            return View(await _context.Rooms.ToListAsync());
+            var query = _context.Rooms
+                .Include(r => r.Building)
+                .ThenInclude(b => b.Campus)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                query = query.Where(r => r.Name.Contains(searchString) || r.Description.Contains(searchString));
+            }
+
+            if (campusId.HasValue)
+            {
+                query = query.Where(r => r.Building.CampusId == campusId.Value);
+            }
+
+            if (buildingId.HasValue)
+            {
+                query = query.Where(r => r.BuildingId == buildingId.Value);
+            }
+
+            ViewData["CurrentFilter"] = searchString;
+
+            // Dropdown lists
+            ViewBag.Campuses = new SelectList(_context.Campuses, "CampusId", "Name", campusId);
+            ViewBag.Buildings = new SelectList(_context.Buildings
+                .Where(b => !campusId.HasValue || b.CampusId == campusId.Value),
+                "BuildingId", "Name", buildingId);
+
+            return View(await query.ToListAsync());
         }
 
         // GET: Rooms/Details/5
@@ -34,6 +62,7 @@ namespace WebApplication8.Controllers
             }
 
             var room = await _context.Rooms
+                .Include(r => r.Building)
                 .FirstOrDefaultAsync(m => m.RoomId == id);
             if (room == null)
             {
@@ -46,6 +75,7 @@ namespace WebApplication8.Controllers
         // GET: Rooms/Create
         public IActionResult Create()
         {
+            ViewData["BuildingId"] = new SelectList(_context.Buildings, "BuildingId", "Name");
             return View();
         }
 
@@ -54,7 +84,7 @@ namespace WebApplication8.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("RoomId,Name,Description,Capacity")] Room room)
+        public async Task<IActionResult> Create([Bind("RoomId,Name,Description,Capacity,BuildingId")] Room room)
         {
             if (ModelState.IsValid)
             {
@@ -62,6 +92,7 @@ namespace WebApplication8.Controllers
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
+            ViewData["BuildingId"] = new SelectList(_context.Buildings, "BuildingId", "Name", room.BuildingId);
             return View(room);
         }
 
@@ -78,6 +109,7 @@ namespace WebApplication8.Controllers
             {
                 return NotFound();
             }
+            ViewData["BuildingId"] = new SelectList(_context.Buildings, "BuildingId", "Name", room.BuildingId);
             return View(room);
         }
 
@@ -86,7 +118,7 @@ namespace WebApplication8.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("RoomId,Name,Description,Capacity")] Room room)
+        public async Task<IActionResult> Edit(int id, [Bind("RoomId,Name,Description,Capacity,BuildingId")] Room room)
         {
             if (id != room.RoomId)
             {
@@ -113,6 +145,7 @@ namespace WebApplication8.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
+            ViewData["BuildingId"] = new SelectList(_context.Buildings, "BuildingId", "Name", room.BuildingId);
             return View(room);
         }
 
@@ -125,6 +158,7 @@ namespace WebApplication8.Controllers
             }
 
             var room = await _context.Rooms
+                .Include(r => r.Building)
                 .FirstOrDefaultAsync(m => m.RoomId == id);
             if (room == null)
             {

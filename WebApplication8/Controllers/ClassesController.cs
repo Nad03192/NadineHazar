@@ -263,12 +263,10 @@ namespace WebApplication8.Controllers
             return Json(eligibleInstructors);
         }
 
-
         [HttpGet]
-        public IActionResult GetAvailableRooms(int courseId, string newStartTime, string dayOfWeekStr)
+        public IActionResult GetAvailableRooms(int courseId, string newStartTime, string dayOfWeekStr, string userId)
         {
-            // Validate input
-            if (courseId == 0 || string.IsNullOrEmpty(newStartTime) || string.IsNullOrEmpty(dayOfWeekStr))
+            if (courseId == 0 || string.IsNullOrEmpty(newStartTime) || string.IsNullOrEmpty(dayOfWeekStr) || string.IsNullOrEmpty(userId))
                 return Json(new List<SelectListItem>());
 
             if (!TimeSpan.TryParse(newStartTime, out TimeSpan startTime) ||
@@ -285,15 +283,26 @@ namespace WebApplication8.Controllers
             if (creditHours <= 0)
                 return Json(new List<SelectListItem>());
 
-            // Calculate end time safely capped at 24h
             TimeSpan duration = TimeSpan.FromHours(creditHours);
             TimeSpan newEndTime = startTime + duration;
             if (newEndTime.TotalHours > 24)
                 newEndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)).Add(TimeSpan.FromSeconds(59));
 
-            var allRooms = _context.Rooms.ToList();
+            // Get instructor's campus
+            var instructorCampusId = _context.UserCampuses
+                .Where(uc => uc.UserId == userId)
+                .Select(uc => uc.CampusId)
+                .FirstOrDefault();
 
-            // Get classes booked on the same day, with course info
+            if (instructorCampusId == 0)
+                return Json(new List<SelectListItem>());
+
+            // Filter rooms whose building belongs to the instructor's campus
+            var allRooms = _context.Rooms
+                .Include(r => r.Building)
+                .Where(r => r.Building.CampusId == instructorCampusId)
+                .ToList();
+
             var classesOnSameDay = _context.Classes
                 .Include(c => c.Course)
                 .Where(c => c.DayOfWeek == dayOfWeek && c.RoomId != 0 && c.Course != null)
@@ -306,10 +315,7 @@ namespace WebApplication8.Controllers
                 TimeSpan bookedStart = bookedClass.StartTime;
                 TimeSpan bookedEnd = bookedStart + TimeSpan.FromHours(bookedClass.Course.CreditNumber);
 
-                // Overlap check:
-                bool isOverlap = startTime < bookedEnd && newEndTime > bookedStart;
-
-                if (isOverlap)
+                if (startTime < bookedEnd && newEndTime > bookedStart)
                 {
                     unavailableRoomIds.Add(bookedClass.RoomId);
                 }

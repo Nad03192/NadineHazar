@@ -247,6 +247,54 @@ namespace WebApplication8.Data.Migrations
                     b.ToTable("Availabilities");
                 });
 
+            modelBuilder.Entity("WebApplication8.Models.Building", b =>
+                {
+                    b.Property<int>("BuildingId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BuildingId"));
+
+                    b.Property<int>("CampusId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("BuildingId");
+
+                    b.HasIndex("CampusId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Buildings");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.Campus", b =>
+                {
+                    b.Property<int>("CampusId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CampusId"));
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("CampusId");
+
+                    b.ToTable("Campuses");
+                });
+
             modelBuilder.Entity("WebApplication8.Models.Class", b =>
                 {
                     b.Property<int>("ClassId")
@@ -506,6 +554,9 @@ namespace WebApplication8.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RoomId"));
 
+                    b.Property<int>("BuildingId")
+                        .HasColumnType("int");
+
                     b.Property<int>("Capacity")
                         .HasColumnType("int");
 
@@ -517,6 +568,8 @@ namespace WebApplication8.Data.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.HasKey("RoomId");
+
+                    b.HasIndex("BuildingId");
 
                     b.HasIndex("Name")
                         .IsUnique();
@@ -642,6 +695,21 @@ namespace WebApplication8.Data.Migrations
                     b.ToTable("StudyPrograms");
                 });
 
+            modelBuilder.Entity("WebApplication8.Models.UserCampus", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("CampusId")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserId", "CampusId");
+
+                    b.HasIndex("CampusId");
+
+                    b.ToTable("UserCampuses");
+                });
+
             modelBuilder.Entity("WebApplication8.Models.UserProgram", b =>
                 {
                     b.Property<string>("UserId")
@@ -725,6 +793,17 @@ namespace WebApplication8.Data.Migrations
                     b.Navigation("Shift");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.Building", b =>
+                {
+                    b.HasOne("WebApplication8.Models.Campus", "Campus")
+                        .WithMany("Buildings")
+                        .HasForeignKey("CampusId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Campus");
                 });
 
             modelBuilder.Entity("WebApplication8.Models.Class", b =>
@@ -887,6 +966,17 @@ namespace WebApplication8.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("WebApplication8.Models.Room", b =>
+                {
+                    b.HasOne("WebApplication8.Models.Building", "Building")
+                        .WithMany("Rooms")
+                        .HasForeignKey("BuildingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Building");
+                });
+
             modelBuilder.Entity("WebApplication8.Models.StudentGrade", b =>
                 {
                     b.HasOne("WebApplication8.Models.Enrollment", "Enrollment")
@@ -917,6 +1007,25 @@ namespace WebApplication8.Data.Migrations
                     b.Navigation("Faculty");
                 });
 
+            modelBuilder.Entity("WebApplication8.Models.UserCampus", b =>
+                {
+                    b.HasOne("WebApplication8.Models.Campus", "Campus")
+                        .WithMany("UserCampuses")
+                        .HasForeignKey("CampusId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Campus");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("WebApplication8.Models.UserProgram", b =>
                 {
                     b.HasOne("WebApplication8.Models.StudyProgram", "StudyProgram")
@@ -934,6 +1043,18 @@ namespace WebApplication8.Data.Migrations
                     b.Navigation("StudyProgram");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.Building", b =>
+                {
+                    b.Navigation("Rooms");
+                });
+
+            modelBuilder.Entity("WebApplication8.Models.Campus", b =>
+                {
+                    b.Navigation("Buildings");
+
+                    b.Navigation("UserCampuses");
                 });
 
             modelBuilder.Entity("WebApplication8.Models.Class", b =>

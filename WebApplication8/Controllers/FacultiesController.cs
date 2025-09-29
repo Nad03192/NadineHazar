@@ -20,11 +20,25 @@ namespace WebApplication8.Controllers
         }
 
         // GET: Faculties
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string searchString, int pageNumber = 1)
         {
-            return View(await _context.Faculties.ToListAsync());
-        }
+            int pageSize = 10; // number of rows per page
 
+            var faculties = _context.Faculties.AsQueryable();
+
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                faculties = faculties.Where(f => f.Name.Contains(searchString) ||
+                                                 f.Description.Contains(searchString));
+            }
+
+            var model = await PaginatedList<Faculty>.CreateAsync(
+                faculties.AsNoTracking(), pageNumber, pageSize);
+
+            ViewData["CurrentFilter"] = searchString;
+
+            return View(model);
+        }
         // GET: Faculties/Details/5
         public async Task<IActionResult> Details(int? id)
         {

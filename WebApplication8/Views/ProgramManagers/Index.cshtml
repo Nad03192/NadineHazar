@@ -1,41 +1,45 @@
 ﻿@model IEnumerable<WebApplication8.Models.ProgramManager>
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Program Managers";
 }
 
-<h1>Index</h1>
+<h1>@ViewData["Title"]</h1>
+
+<form method="get" class="mb-3 row g-2">
+    <div class="col-auto">
+        <input type="text" name="search" class="form-control" placeholder="Search by email or study program"
+               value="@ViewBag.Search" />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Search</button>
+    </div>
+</form>
 
 <p>
-    <a asp-action="Create">Create New</a>
+    <a asp-action="Create" class="btn btn-success">Create New</a>
 </p>
-<table class="table">
+
+<table class="table table-bordered table-hover">
     <thead>
         <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.User)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.StudyProgram)
-            </th>
-            <th></th>
+            <th>Instructor Email</th>
+            <th>Study Program</th>
+            <th>Actions</th>
         </tr>
     </thead>
     <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.User.Id)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.StudyProgram.Name)
-            </td>
-            <td>
-                @Html.ActionLink("Edit", "Edit", new { /* id=item.PrimaryKey */ }) |
-                @Html.ActionLink("Details", "Details", new { /* id=item.PrimaryKey */ }) |
-                @Html.ActionLink("Delete", "Delete", new { /* id=item.PrimaryKey */ })
-            </td>
-        </tr>
-}
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.User?.Email</td>
+                <td>@item.StudyProgram?.Name</td>
+                <td>
+                    @Html.ActionLink("Edit", "Edit", new { userId = item.UserId, studyProgramId = item.StudyProgramId }) |
+                    @Html.ActionLink("Details", "Details", new { userId = item.UserId, studyProgramId = item.StudyProgramId }) |
+                    @Html.ActionLink("Delete", "Delete", new { userId = item.UserId, studyProgramId = item.StudyProgramId })
+                </td>
+            </tr>
+        }
     </tbody>
 </table>

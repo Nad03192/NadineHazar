@@ -1,15 +1,24 @@
 ﻿@model IEnumerable<WebApplication8.Models.StudyProgram>
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Study Programs";
+    var currentSearch = ViewBag.CurrentFilter as string;
 }
 
-<h1>Index</h1>
+<h1>Study Programs</h1>
 
 <p>
-    <a asp-action="Create">Create New</a>
+    <a asp-action="Create" class="btn btn-primary">Create New</a>
 </p>
-<table class="table">
+
+<!-- Search Form -->
+<form asp-action="Index" method="get" class="form-inline mb-3">
+    <input type="text" name="searchString" value="@currentSearch" class="form-control mr-2" placeholder="Search by Name or Faculty..." />
+    <button type="submit" class="btn btn-outline-primary">Search</button>
+    <a asp-action="Index" class="btn btn-outline-secondary ml-2">Clear</a>
+</form>
+
+<table class="table table-striped">
     <thead>
         <tr>
             <th>
@@ -25,23 +34,18 @@
         </tr>
     </thead>
     <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.Name)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.TotalCredits)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Faculty.Name)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.StudyProgramId">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.StudyProgramId">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.StudyProgramId">Delete</a>
-            </td>
-        </tr>
-}
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Name</td>
+                <td>@item.TotalCredits</td>
+                <td>@item.Faculty?.Name</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.StudyProgramId">Edit</a> |
+                    <a asp-action="Details" asp-route-id="@item.StudyProgramId">Details</a> |
+                    <a asp-action="Delete" asp-route-id="@item.StudyProgramId">Delete</a>
+                </td>
+            </tr>
+        }
     </tbody>
 </table>

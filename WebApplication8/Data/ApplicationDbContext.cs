@@ -40,9 +40,44 @@ namespace WebApplication8.Data
 
         // Semester
         public DbSet<Semester> Semesters { get; set; }
+        // user campuses
+        public DbSet<UserCampus> UserCampuses { get; set; }
+        public DbSet<Campus> Campuses { get; set; }
+        public DbSet<Building> Buildings { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // -------------------- USER CAMPUS --------------------
+            modelBuilder.Entity<UserCampus>()
+                .HasKey(uc => new { uc.UserId, uc.CampusId });
+
+            // Campus -> Buildings
+            modelBuilder.Entity<Building>()
+                .HasOne(b => b.Campus)
+                .WithMany(c => c.Buildings)
+                .HasForeignKey(b => b.CampusId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Building -> Rooms
+            modelBuilder.Entity<Room>()
+                .HasOne(r => r.Building)
+                .WithMany(b => b.Rooms)
+                .HasForeignKey(r => r.BuildingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // UserCampus relation
+            modelBuilder.Entity<UserCampus>()
+                .HasOne(uc => uc.User)
+                .WithMany()
+                .HasForeignKey(uc => uc.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserCampus>()
+                .HasOne(uc => uc.Campus)
+                .WithMany(c => c.UserCampuses)
+                .HasForeignKey(uc => uc.CampusId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // -------------------- COURSE PREREQUISITES --------------------
             modelBuilder.Entity<CoursePrerequisite>()
@@ -194,6 +229,7 @@ namespace WebApplication8.Data
     .HasKey(pm => new { pm.UserId, pm.StudyProgramId });
 
         }
+
         public DbSet<WebApplication8.Models.ProgramManager> ProgramManager { get; set; } = default!;
 
 

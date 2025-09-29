@@ -184,8 +184,15 @@ namespace WebApplication8.Controllers
         public async Task<IActionResult> EnterWeeklyAvailability()
         {
             var allShifts = await _context.Shifts
-     .OrderBy(s => s.StartTime)
-     .ToListAsync();
+                .OrderBy(s => s.StartTime)
+                .ToListAsync();
+
+            var userId = _userManager.GetUserId(User);
+
+            // Get all existing availabilities for this user
+            var existingAvailabilities = await _context.Availabilities
+                .Where(a => a.UserId == userId)
+                .ToListAsync();
 
             var model = new AvailabilityFormViewModel
             {
@@ -195,13 +202,15 @@ namespace WebApplication8.Controllers
                     {
                         Day = day,
                         AvailableShifts = allShifts,
-                        SelectedShiftIds = new List<int>()
+                        SelectedShiftIds = existingAvailabilities
+                            .Where(a => a.DayOfWeek == day)
+                            .Select(a => a.ShiftId)
+                            .ToList()
                     }).ToList()
             };
 
-            var userId = _userManager.GetUserId(User);
             var loadedTime = await _context.LoadedTimes.FirstOrDefaultAsync(l => l.UserId == userId);
-            ViewBag.LoadedTimeMinutes = loadedTime?.HoursPerWeek * 60;
+            ViewBag.LoadedTimeMinutes = loadedTime?.HoursPerWeek * 60 ?? 0;
 
             return View(model);
         }
@@ -270,7 +279,9 @@ namespace WebApplication8.Controllers
             _context.Availabilities.AddRange(selectedAvailabilities);
             await _context.SaveChangesAsync();
 
-            return RedirectToAction("Index");
+            return RedirectToAction("Home", "Instructor");
+
+
         }
 
 

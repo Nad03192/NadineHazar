@@ -20,11 +20,24 @@ namespace WebApplication8.Controllers
         }
 
         // GET: StudyPrograms
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string searchString)
         {
-            var applicationDbContext = _context.StudyPrograms.Include(s => s.Faculty);
-            return View(await applicationDbContext.ToListAsync());
+            ViewBag.CurrentFilter = searchString;
+
+            var studyPrograms = _context.StudyPrograms
+                .Include(s => s.Faculty)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                studyPrograms = studyPrograms.Where(s =>
+                    s.Name.Contains(searchString) ||
+                    s.Faculty.Name.Contains(searchString));
+            }
+
+            return View(await studyPrograms.ToListAsync());
         }
+
 
         // GET: StudyPrograms/Details/5
         public async Task<IActionResult> Details(int? id)

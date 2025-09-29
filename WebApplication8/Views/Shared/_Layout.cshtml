@@ -9,42 +9,135 @@
     <link rel="stylesheet" href="~/WebApplication8.styles.css" asp-append-version="true" />
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+    @if (User.Identity.IsAuthenticated)
+    {
+        <nav class="navbar navbar-expand-lg navbar-light bg-light mb-3">
             <div class="container-fluid">
                 <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">WebApplication8</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                        aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                         </li>
+
+                        @* Admin Dropdowns *@
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="academicDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Academic Structure
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="academicDropdown">
+                                    <li><a class="dropdown-item" asp-controller="Faculties" asp-action="Index">Faculties</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Rooms" asp-action="Index">Rooms</a></li>
+                                    <li><a class="dropdown-item" asp-controller="StudyPrograms" asp-action="Index">Study Programs</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Campus" asp-action="Index">Campuses</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Buildings" asp-action="Index">Buildings</a></li>
+                                    <li><a class="dropdown-item" asp-controller="UserCampus" asp-action="Index">User Campuses</a></li>
+                                </ul>
+                            </li>
+
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="staffDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Staff Management
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="staffDropdown">
+                                    <li><a class="dropdown-item" asp-controller="Admin" asp-action="CreateInstructor">Create Instructor</a></li>
+                                    <li><a class="dropdown-item" asp-controller="ProgramManagers" asp-action="Index">Program Managers</a></li>
+                                    <li><a class="dropdown-item" asp-controller="InstructorCourses" asp-action="Index">Instructor Courses</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Availabilities" asp-action="Index">Availabilities</a></li>
+                                    <li><a class="dropdown-item" asp-controller="LoadedTimes" asp-action="Index">Loaded Times</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Shifts" asp-action="Index">Shifts</a></li>
+                                </ul>
+                            </li>
+
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="courseDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Course & Curriculum
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="courseDropdown">
+                                    <li><a class="dropdown-item" asp-controller="Courses" asp-action="Index">Courses</a></li>
+                                    <li><a class="dropdown-item" asp-controller="CoursePrerequisites" asp-action="Index">Course Prerequisites</a></li>
+                                    <li><a class="dropdown-item" asp-controller="CourseTypes" asp-action="Index">Course Types</a></li>
+                                    <li><a class="dropdown-item" asp-controller="ProgramCourses" asp-action="Index">Program Courses</a></li>
+                                    <li><a class="dropdown-item" asp-controller="GradeDefinitions" asp-action="Index">Grade Definitions</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Classes" asp-action="Index">Classes</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Semesters" asp-action="Index">Semesters</a></li>
+                                </ul>
+                            </li>
+
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="studentDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Student Management
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="studentDropdown">
+                                    <li><a class="dropdown-item" asp-controller="Admin" asp-action="CreateStudent">Create Student</a></li>
+                                    <li><a class="dropdown-item" asp-controller="UserPrograms" asp-action="Index">User Programs</a></li>
+                                    <li><a class="dropdown-item" asp-controller="StudentGrades" asp-action="Index">Student Grades</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Enrollments" asp-action="Index">Enrollments</a></li>
+                                </ul>
+                            </li>
+                        }
+
+                        @* Instructor Links as dropdown *@
+                        @if (User.IsInRole("Instructor"))
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="instructorDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Instructor
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="instructorDropdown">
+                                    <li><a class="dropdown-item" asp-controller="Availabilities" asp-action="EnterWeeklyAvailability">Enter Availability</a></li>
+                                    <li><a class="dropdown-item" asp-area="Instructor" asp-controller="Schedules" asp-action="MySchedule">My Schedule</a></li>
+                                    <li><a class="dropdown-item" asp-area="Instructor" asp-controller="Courses" asp-action="MyCourses">My Classes</a></li>
+                                    <li><a class="dropdown-item" asp-controller="StudentGrades" asp-action="Index">Student Grades</a></li>
+                                </ul>
+                            </li>
+                        }
+
+                        @* Program Manager Links as dropdown *@
+                        @if (User.IsInRole("ProgramManager"))
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="programManagerDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Program Manager
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="programManagerDropdown">
+                                    <li><a class="dropdown-item" asp-controller="CourseTypes" asp-action="Index">Course Types</a></li>
+                                    <li><a class="dropdown-item" asp-controller="ProgramCourses" asp-action="Index">Program Courses</a></li>
+                                </ul>
+                            </li>
+                        }
+                    </ul>
+
+                    <ul class="navbar-nav ms-auto">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                            <form asp-area="Identity" asp-page="/Account/Logout" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-link nav-link">Logout</button>
+                            </form>
                         </li>
                     </ul>
-                    <partial name="_LoginPartial" />
                 </div>
             </div>
         </nav>
-    </header>
+
+    }
+
     <div class="container">
         <main role="main" class="pb-3">
             @RenderBody()
         </main>
     </div>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2025 - WebApplication8 - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-        </div>
-    </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
+
 </html>
