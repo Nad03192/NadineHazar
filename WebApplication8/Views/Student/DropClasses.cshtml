@@ -1,0 +1,46 @@
+﻿@model List<WebApplication8.Models.MyClassViewModel>
+
+<h1>Drop Classes - @ViewBag.SemesterName</h1>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">You are not enrolled in any classes for the current semester.</div>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Course Name</th>
+                <th>Course Type</th>
+                <th>Instructor</th>
+                <th>Day & Time</th>
+                <th>Room</th>
+                <th>Credits</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var cls in Model)
+            {
+                <tr>
+                    <td>@cls.CourseName</td>
+                    <td>@cls.CourseTypeName</td>
+                    <td>@cls.InstructorUserName</td>
+                    <td>@cls.DayOfWeek @cls.StartTime</td>
+                    <td>@cls.RoomName (@cls.BuildingName)</td>
+                    <td>@cls.CreditNumber</td>
+                    <td>
+                        <form asp-action="DropClass" method="post">
+                            <input type="hidden" name="classId" value="@cls.ClassId" />
+                            <button type="submit" class="btn btn-danger"
+                            @(cls.CanDrop ? "" : "disabled='disabled' title='Cannot drop: minimum 18 credits or add/drop period ended'")>
+                                Drop
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

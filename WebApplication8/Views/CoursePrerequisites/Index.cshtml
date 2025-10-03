@@ -4,7 +4,7 @@
     ViewData["Title"] = "Index";
 }
 
-<h1>Index</h1>
+<h1>Course Prerequesite</h1>
 
 <p>
     <a asp-action="Create">Create New</a>
@@ -12,30 +12,24 @@
 <table class="table">
     <thead>
         <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.Course)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Prerequisite)
-            </th>
+            <th>@Html.DisplayNameFor(model => model.Course.Name)</th>
+            <th>@Html.DisplayNameFor(model => model.Prerequisite.Name)</th>
             <th></th>
         </tr>
     </thead>
     <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.Course.CourseId)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Prerequisite.CourseId)
-            </td>
-            <td>
-                @Html.ActionLink("Edit", "Edit", new { /* id=item.PrimaryKey */ }) |
-                @Html.ActionLink("Details", "Details", new { /* id=item.PrimaryKey */ }) |
-                @Html.ActionLink("Delete", "Delete", new { /* id=item.PrimaryKey */ })
-            </td>
-        </tr>
-}
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@Html.DisplayFor(modelItem => item.Course.Name)</td>
+                <td>@Html.DisplayFor(modelItem => item.Prerequisite.Name)</td>
+                <td>
+                    @* Pass both IDs for composite key *@
+                    @Html.ActionLink("Edit", "Edit", new { courseId = item.CourseId, prerequisiteId = item.PrerequisiteId }) |
+                
+                    @Html.ActionLink("Delete", "Delete", new { courseId = item.CourseId, prerequisiteId = item.PrerequisiteId })
+                </td>
+            </tr>
+        }
     </tbody>
 </table>

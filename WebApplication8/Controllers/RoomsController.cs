@@ -86,15 +86,26 @@ namespace WebApplication8.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("RoomId,Name,Description,Capacity,BuildingId")] Room room)
         {
+            // ✅ Check if a room with the same name already exists in this building
+            bool exists = await _context.Rooms
+                .AnyAsync(r =>  r.Name == room.Name);
+
+            if (exists)
+            {
+                ModelState.AddModelError("Name", "A room with this name already exists in the selected building.");
+            }
+
             if (ModelState.IsValid)
             {
                 _context.Add(room);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
+
             ViewData["BuildingId"] = new SelectList(_context.Buildings, "BuildingId", "Name", room.BuildingId);
             return View(room);
         }
+
 
         // GET: Rooms/Edit/5
         public async Task<IActionResult> Edit(int? id)
@@ -125,6 +136,15 @@ namespace WebApplication8.Controllers
                 return NotFound();
             }
 
+            // ✅ Check uniqueness excluding the current room
+            bool exists = await _context.Rooms
+                .AnyAsync(r =>  r.Name == room.Name && r.RoomId != room.RoomId);
+
+            if (exists)
+            {
+                ModelState.AddModelError("Name", "A room with this name already exists in the selected building.");
+            }
+
             if (ModelState.IsValid)
             {
                 try
@@ -145,6 +165,7 @@ namespace WebApplication8.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
+
             ViewData["BuildingId"] = new SelectList(_context.Buildings, "BuildingId", "Name", room.BuildingId);
             return View(room);
         }

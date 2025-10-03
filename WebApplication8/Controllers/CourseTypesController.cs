@@ -56,6 +56,13 @@ namespace WebApplication8.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("CourseTypeId,Name,Description")] CourseType courseType)
         {
+            // Check if a course type with the same name already exists
+            bool nameExists = await _context.CourseTypes.AnyAsync(ct => ct.Name == courseType.Name);
+            if (nameExists)
+            {
+                ModelState.AddModelError("Name", "A course type with this name already exists.");
+            }
+
             if (ModelState.IsValid)
             {
                 _context.Add(courseType);
@@ -64,6 +71,7 @@ namespace WebApplication8.Controllers
             }
             return View(courseType);
         }
+
 
         // GET: CourseTypes/Edit/5
         public async Task<IActionResult> Edit(int? id)
@@ -93,6 +101,15 @@ namespace WebApplication8.Controllers
                 return NotFound();
             }
 
+            // Check if a course type with the same name exists, excluding the current one
+            bool nameExists = await _context.CourseTypes
+                .AnyAsync(ct => ct.Name == courseType.Name && ct.CourseTypeId != courseType.CourseTypeId);
+
+            if (nameExists)
+            {
+                ModelState.AddModelError("Name", "A course type with this name already exists.");
+            }
+
             if (ModelState.IsValid)
             {
                 try
@@ -115,6 +132,7 @@ namespace WebApplication8.Controllers
             }
             return View(courseType);
         }
+
 
         // GET: CourseTypes/Delete/5
         public async Task<IActionResult> Delete(int? id)

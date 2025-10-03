@@ -21,12 +21,19 @@ namespace WebApplication8.Controllers
         }
 
         // GET: LoadedTimes
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string searchEmail)
         {
-            var loadedTimes = _context.LoadedTimes.Include(l => l.User);
-            return View(await loadedTimes.ToListAsync());
-        }
+            var query = _context.LoadedTimes.Include(l => l.User).AsQueryable();
 
+            if (!string.IsNullOrEmpty(searchEmail))
+            {
+                query = query.Where(l => l.User.Email.Contains(searchEmail));
+            }
+
+            var loadedTimes = await query.ToListAsync();
+            ViewBag.SearchEmail = searchEmail; // Keep the search value in the textbox
+            return View(loadedTimes);
+        }
         // GET: LoadedTimes/Details/5
         public async Task<IActionResult> Details(string id)
         {
@@ -125,16 +132,20 @@ namespace WebApplication8.Controllers
 
 
         // GET: LoadedTimes/Edit/5
+        // GET: LoadedTimes/Edit/5
         public async Task<IActionResult> Edit(string id)
         {
             if (id == null)
                 return NotFound();
 
-            var loadedTime = await _context.LoadedTimes.FindAsync(id);
+            // Eager-load the User
+            var loadedTime = await _context.LoadedTimes
+                .Include(l => l.User)    // <- important
+                .FirstOrDefaultAsync(l => l.UserId == id);
+
             if (loadedTime == null)
                 return NotFound();
 
-            ViewData["UserId"] = new SelectList(_context.Users, "Id", "UserName", loadedTime.UserId);
             return View(loadedTime);
         }
 

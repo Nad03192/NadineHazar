@@ -20,15 +20,64 @@ namespace WebApplication8.Controllers
         {
             _context = context;
         }
-
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(
+        int? semesterId,
+        string? instructorId,
+        int? facultyId,
+        int? programId,
+        int? courseTypeId,
+        int? campusId
+    )
         {
             var classes = _context.Classes
                 .Include(c => c.Course)
+                    .ThenInclude(c => c.ProgramCourses)
+                        .ThenInclude(pc => pc.StudyProgram)
+                            .ThenInclude(sp => sp.Faculty)
+                .Include(c => c.Course)
+                    .ThenInclude(c => c.ProgramCourses)
+                        .ThenInclude(pc => pc.CourseType)
                 .Include(c => c.Room)
-                .Include(c => c.User);
+                    .ThenInclude(r => r.Building)
+                        .ThenInclude(b => b.Campus)
+                .Include(c => c.Semester)
+                .Include(c => c.User)
+                .AsQueryable();
+
+            // Filtering — skip filters if values are null, empty, or default (0)
+            if (semesterId.HasValue && semesterId.Value != 0)
+                classes = classes.Where(c => c.SemesterId == semesterId.Value);
+
+            if (!string.IsNullOrWhiteSpace(instructorId))
+                classes = classes.Where(c => c.UserId == instructorId);
+
+            if (facultyId.HasValue && facultyId.Value != 0)
+                classes = classes.Where(c => c.Course.ProgramCourses
+                    .Any(pc => pc.StudyProgram.FacultyId == facultyId.Value));
+
+            if (programId.HasValue && programId.Value != 0)
+                classes = classes.Where(c => c.Course.ProgramCourses
+                    .Any(pc => pc.StudyProgramId == programId.Value));
+
+            if (courseTypeId.HasValue && courseTypeId.Value != 0)
+                classes = classes.Where(c => c.Course.ProgramCourses
+                    .Any(pc => pc.CourseTypeId == courseTypeId.Value));
+
+            if (campusId.HasValue && campusId.Value != 0)
+                classes = classes.Where(c => c.Room.Building.CampusId == campusId.Value);
+
+            // Dropdown lists
+            ViewBag.Semesters = new SelectList(_context.Semesters, "SemesterId", "Name", semesterId);
+            ViewBag.Instructors = new SelectList(_context.Users, "Id", "Email", instructorId);
+            ViewBag.Faculties = new SelectList(_context.Faculties, "FacultyId", "Name", facultyId);
+            ViewBag.Programs = new SelectList(_context.StudyPrograms, "StudyProgramId", "Name", programId);
+            ViewBag.CourseTypes = new SelectList(_context.CourseTypes, "CourseTypeId", "Name", courseTypeId);
+            ViewBag.Campuses = new SelectList(_context.Campuses, "CampusId", "Name", campusId);
+
             return View(await classes.ToListAsync());
         }
+
+
 
         public async Task<IActionResult> Details(int? id)
         {
@@ -45,14 +94,31 @@ namespace WebApplication8.Controllers
             return View(@class);
         }
 
+        // GET: Class/Create
         public IActionResult Create()
         {
+            // Choose semester with the nearest SubmitClassesEnd in the future
+            var semester = _context.Semesters
+                .Where(s => s.SubmitClassesEnd >= DateTime.Now)
+                .OrderBy(s => s.SubmitClassesEnd)
+                .FirstOrDefault();
+
+            ViewData["SemesterId"] = semester?.SemesterId ?? 0;
+
+            // Courses dropdown
             ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "Name");
-            ViewData["RoomId"] = new SelectList(_context.Rooms, "RoomId", "Name");
-            ViewData["UserId"] = new SelectList(Enumerable.Empty<SelectListItem>());
+
+            // Rooms filtered for the campus of selected semester (you can customize as needed)
+            ViewData["RoomId"] = new SelectList(new List<Room>(), "RoomId", "Name");
+
+            // Instructors dropdown
+            ViewData["UserId"] = new SelectList(_context.Users, "Id", "UserName");
+
             return View();
         }
 
+
+        // POST: Class/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("ClassId,UserId,CourseId,RoomId,StartTime,DayOfWeek")] Class @class)
@@ -63,12 +129,52 @@ namespace WebApplication8.Controllers
                 ModelState.AddModelError("CourseId", "Invalid course.");
             }
 
+            // Auto-assign semester
+            var semester = await _context.Semesters
+                .Where(s => s.SubmitClassesEnd >= DateTime.Now)
+                .OrderBy(s => s.SubmitClassesEnd)
+                .FirstOrDefaultAsync();
+
+            if (semester == null)
+            {
+                ModelState.AddModelError("", "No semester available to assign this class.");
+            }
+            else
+            {
+                @class.SemesterId = semester.SemesterId;
+            }
+
+            // Calculate class end time
             var classEndTime = @class.StartTime + TimeSpan.FromHours(course.CreditNumber);
 
+            // Check instructor scheduling conflicts
             if (await HasSchedulingConflict(@class.UserId, @class.DayOfWeek, @class.StartTime, classEndTime))
             {
                 ModelState.AddModelError("UserId", "This instructor has a conflicting class at the selected time.");
             }
+            // Fetch relevant classes first (without TimeSpan calculation in SQL)
+            var roomClasses = _context.Classes
+                .Include(c => c.Course)
+                .Where(c => c.RoomId == @class.RoomId &&
+                            c.SemesterId == @class.SemesterId &&
+                            c.DayOfWeek == @class.DayOfWeek &&
+                            c.Course != null)
+                .AsEnumerable() // switch to in-memory evaluation
+                .ToList();      // now this is a List<Class>, not a Task
+
+            // Check overlap in memory
+            bool roomConflict = roomClasses.Any(c =>
+            {
+                var existingStart = c.StartTime;
+                var existingEnd = existingStart + TimeSpan.FromHours(c.Course.CreditNumber);
+                return @class.StartTime < existingEnd && classEndTime > existingStart;
+            });
+
+            if (roomConflict)
+            {
+                ModelState.AddModelError("RoomId", "This room is already booked for the selected time.");
+            }
+
 
             if (ModelState.IsValid)
             {
@@ -77,9 +183,18 @@ namespace WebApplication8.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            // Re-populate dropdowns if validation fails
             ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "Name", @class.CourseId);
-            ViewData["RoomId"] = new SelectList(_context.Rooms, "RoomId", "Name", @class.RoomId);
             ViewData["UserId"] = new SelectList(_context.Users, "Id", "UserName", @class.UserId);
+
+            var availableRooms = await _context.Rooms
+                .Include(r => r.Classes)
+                .Where(r => !r.Classes.Any(c => c.SemesterId == semester.SemesterId))
+                .ToListAsync();
+            ViewData["RoomId"] = new SelectList(availableRooms, "RoomId", "Name", @class.RoomId);
+
+            ViewBag.SemesterName = semester.Name;
+
             return View(@class);
         }
 

@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -346,6 +347,7 @@ namespace WebApplication8.Models
 
     public class RegisterUserViewModel
     {
+        public string? Id { get; set; }  // Needed for Edit
         [Required]
         [Display(Name = "Username")]
         public string UserName { get; set; }
@@ -368,6 +370,7 @@ namespace WebApplication8.Models
         [Compare("Password", ErrorMessage = "Passwords do not match.")]
         [Display(Name = "Confirm Password")]
         public string ConfirmPassword { get; set; }
+
     }
 
 
@@ -410,4 +413,128 @@ namespace WebApplication8.Models
             return new PaginatedList<T>(items, count, pageIndex, pageSize);
         }
     }
+    public class StudentGradesViewModel
+    {
+        public int SelectedSemesterId { get; set; }
+        public List<Semester> Semesters { get; set; } = new();
+        public List<CourseType> CourseTypes { get; set; } = new(); // added
+        public List<ClassGradesDto> ClassesGrades { get; set; } = new();
+    }
+
+    public class ClassGradesDto
+    {
+        public string ClassName { get; set; }
+        public string CourseName { get; set; }
+        public List<GradeItemDto> Grades { get; set; } = new();
+
+        // New properties
+        public double FinalGrade { get; set; }
+        public string Status { get; set; }  // "Pass" or "Fail"
+    }
+
+
+    public class GradeItemDto
+    {
+        public string GradeDefinitionName { get; set; }
+        public double Coefficient { get; set; }
+        public double? Score { get; set; }
+    }
+    public class EditInstructorStudentViewModel
+    {
+        public string Id { get; set; }
+
+        [Required]
+        [Display(Name = "Username")]
+        public string UserName { get; set; }
+
+        [Required]
+        [EmailAddress]
+        [Display(Name = "Email")]
+        public string Email { get; set; }
+
+        [Phone]
+        [Display(Name = "Phone Number")]
+        public string PhoneNumber { get; set; }
+
+        [DataType(DataType.Password)]
+        [Display(Name = "Password")]
+        public string? Password { get; set; }  // optional
+
+        [DataType(DataType.Password)]
+        [Compare("Password", ErrorMessage = "Passwords do not match.")]
+        [Display(Name = "Confirm Password")]
+        public string? ConfirmPassword { get; set; }  // optional
+    }
+
+    public class EnrollViewModel
+    {
+        public int ClassId { get; set; } // for binding
+        public List<SelectListItem> Classes { get; set; } = new();
+        public List<string> CourseTypes { get; set; } = new();
+    }
+    public class ClassCardViewModel
+    {
+        public int ClassId { get; set; }
+        public string CourseName { get; set; }
+        public string CourseTypeName { get; set; }
+        public string InstructorUserName { get; set; }
+        public string RoomName { get; set; }
+        public string BuildingName { get; set; }
+        public DayOfWeek DayOfWeek { get; set; }
+        public TimeSpan StartTime { get; set; }
+        public int AvailableSeats { get; set; }
+
+        public bool AlreadyEnrolled { get; set; }
+        public bool PassedCourse { get; set; }
+        public bool PrerequisiteNotSatisfied { get; set; }
+        public string PrerequisiteCourseName { get; set; }
+
+        public string DisableReason
+        {
+            get
+            {
+                if (AlreadyEnrolled) return "Already enrolled";
+                if (PassedCourse) return "Already passed";
+                if (AvailableSeats <= 0) return "Class is full";
+                if (PrerequisiteNotSatisfied) return $"Cannot enroll: prerequisite not satisfied ({PrerequisiteCourseName})";
+                return null;
+            }
+        }
+
+        public bool CanEnroll => string.IsNullOrEmpty(DisableReason);
+    }
+
+    public class EnrollViewModelClasses
+    {
+        public List<ClassCardViewModel> Classes { get; set; } = new();
+        public List<string> CourseTypes { get; set; } = new();
+    }
+    // Models/MyClassesViewModel.cs
+    // ViewModel
+    public class MyClassViewModel
+    {
+        public int ClassId { get; set; }
+        public string CourseName { get; set; } = "";
+        public string CourseTypeName { get; set; } = "";
+        public string InstructorUserName { get; set; } = "";
+        public string RoomName { get; set; } = "";
+        public string BuildingName { get; set; } = "";
+        public DayOfWeek DayOfWeek { get; set; }
+        public TimeSpan StartTime { get; set; }
+        public int CreditNumber { get; set; }
+        public bool CanDrop { get; set; }
+    }
+    public class SwapClassesViewModel
+    {
+        public int CurrentClassId { get; set; }
+        public string CurrentCourseName { get; set; }
+        public string CurrentCourseTypeName { get; set; }
+        public string CurrentInstructor { get; set; }
+        public string CurrentDayTime { get; set; }
+
+        public List<ClassCardViewModel> AvailableClasses { get; set; }
+    }
+
+
+
 }

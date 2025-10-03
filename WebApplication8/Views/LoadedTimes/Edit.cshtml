@@ -4,7 +4,7 @@
     ViewData["Title"] = "Edit";
 }
 
-<h1>Edit</h1>
+<h1>Edit LoadedTime</h1>
 
 <h4>LoadedTime</h4>
 <hr />
@@ -12,16 +12,34 @@
     <div class="col-md-4">
         <form asp-action="Edit">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <!-- Hidden UserId -->
             <input type="hidden" asp-for="UserId" />
+
+            <!-- Display User Email -->
+            <div class="form-group">
+                <label class="control-label">User Email</label>
+                <input class="form-control" value="@Model.User?.Email" disabled />
+            </div>
+
+            <!-- HoursPerWeek -->
             <div class="form-group">
                 <label asp-for="HoursPerWeek" class="control-label"></label>
                 <input asp-for="HoursPerWeek" class="form-control" />
                 <span asp-validation-for="HoursPerWeek" class="text-danger"></span>
             </div>
+
             <div class="form-group">
                 <input type="submit" value="Save" class="btn btn-primary" />
             </div>
         </form>
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        @if (ViewBag.Message != null)
+        {
+            <div class="alert alert-success">@ViewBag.Message</div>
+        }
+
     </div>
 </div>
 
@@ -30,5 +48,7 @@
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 }

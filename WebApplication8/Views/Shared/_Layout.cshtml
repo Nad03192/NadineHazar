@@ -9,6 +9,15 @@
     <link rel="stylesheet" href="~/WebApplication8.styles.css" asp-append-version="true" />
 </head>
 <body>
+    @* Student Links *@
+    @if (User.IsInRole("Student"))
+    {
+        <li class="nav-item">
+            <a class="nav-link btn btn-primary text-white ms-2" asp-controller="Enrollments" asp-action="Create">
+                Enroll in Class
+            </a>
+        </li>
+    }
     @if (User.Identity.IsAuthenticated)
     {
         <nav class="navbar navbar-expand-lg navbar-light bg-light mb-3">

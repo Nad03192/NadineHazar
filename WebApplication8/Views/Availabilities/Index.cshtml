@@ -1,47 +1,59 @@
 ﻿@model IEnumerable<WebApplication8.Models.Availability>
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Availabilities";
 }
 
-<h1>Index</h1>
+<h1>@ViewData["Title"]</h1>
+
+<form method="get" class="mb-3 row g-2">
+    <div class="col-auto">
+        <input type="text" name="search" class="form-control" placeholder="Search by user email" value="@ViewBag.Search" />
+    </div>
+
+    <div class="col-auto">
+        <select name="dayOfWeek" class="form-control" asp-items="ViewBag.DaysOfWeek">
+            <option value="">-- All Days --</option>
+        </select>
+    </div>
+
+    <div class="col-auto">
+        <select name="shiftId" class="form-control" asp-items="ViewBag.Shifts">
+            <option value="">-- All Shifts --</option>
+        </select>
+    </div>
+
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Filter</button>
+    </div>
+</form>
 
 <p>
-    <a asp-action="Create">Create New</a>
+    <a asp-action="Create" class="btn btn-success">Create New</a>
 </p>
-<table class="table">
+
+<table class="table table-bordered table-hover">
     <thead>
         <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.DayOfWeek)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Shift)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.User)
-            </th>
-            <th></th>
+            <th>Day of Week</th>
+            <th>Shift</th>
+            <th>User Email</th>
+            <th>Actions</th>
         </tr>
     </thead>
     <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.DayOfWeek)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Shift.ShiftId)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.User.Id)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.AvailabilityId">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.AvailabilityId">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.AvailabilityId">Delete</a>
-            </td>
-        </tr>
-}
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.DayOfWeek</td>
+                <td>@item.Shift.StartTime.ToString(@"hh\:mm") - @item.Shift.EndTime.ToString(@"hh\:mm")</td>
+                <td>@item.User?.Email</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.AvailabilityId" class="btn btn-sm btn-primary">Edit</a>
+                    <a asp-action="Details" asp-route-id="@item.AvailabilityId" class="btn btn-sm btn-info">Details</a>
+                    <a asp-action="Delete" asp-route-id="@item.AvailabilityId" class="btn btn-sm btn-danger">Delete</a>
+                </td>
+            </tr>
+        }
     </tbody>
 </table>

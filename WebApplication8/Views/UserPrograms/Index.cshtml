@@ -1,41 +1,84 @@
 ﻿@model IEnumerable<WebApplication8.Models.UserProgram>
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "User Programs";
 }
 
-<h1>Index</h1>
+<h1>@ViewData["Title"]</h1>
 
 <p>
-    <a asp-action="Create">Create New</a>
+    <a asp-action="Create" class="btn btn-success">Create New</a>
 </p>
-<table class="table">
+
+<form asp-action="Index" method="get" class="form-inline mb-3">
+
+    <!-- Search by Email -->
+    <div class="form-group mr-2">
+        <label class="mr-2">Search:</label>
+        <input type="text" name="searchEmail" class="form-control" placeholder="Search by user email"
+               value="@(ViewBag.SearchEmail ?? "")" />
+    </div>
+
+    <!-- Filter by Faculty -->
+    <div class="form-group mr-2">
+        <label class="mr-2">Faculty:</label>
+        <select name="facultyId" asp-items="ViewBag.Faculties" class="form-control">
+            <option value="">-- All Faculties --</option>
+        </select>
+    </div>
+
+    <!-- Filter by Study Program -->
+    <div class="form-group mr-2">
+        <label class="mr-2">Study Program:</label>
+        <select name="studyProgramId" asp-items="ViewBag.StudyPrograms" class="form-control">
+            <option value="">-- All Study Programs --</option>
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Filter</button>
+    <a asp-action="Index" class="btn btn-secondary ml-2">Reset</a>
+</form>
+
+
+<!-- Table -->
+<table class="table table-bordered table-striped">
     <thead>
         <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.User)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.StudyProgram)
-            </th>
-            <th></th>
+            <th>#</th>
+            <th>User Email</th>
+            <th>Study Program</th>
+            <th>Faculty</th>
+            <th>Actions</th>
         </tr>
     </thead>
     <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.User.Id)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.StudyProgram.Name)
-            </td>
-            <td>
-                @Html.ActionLink("Edit", "Edit", new { /* id=item.PrimaryKey */ }) |
-                @Html.ActionLink("Details", "Details", new { /* id=item.PrimaryKey */ }) |
-                @Html.ActionLink("Delete", "Delete", new { /* id=item.PrimaryKey */ })
-            </td>
-        </tr>
-}
+        @{
+            int counter = 1;
+        }
+
+        @if (!Model.Any())
+        {
+            <tr>
+                <td colspan="5" class="text-center text-muted">No user programs found for the selected filters.</td>
+            </tr>
+        }
+        else
+        {
+            foreach (var up in Model)
+            {
+                <tr>
+                    <td>@counter</td>
+                    <td>@(up.User?.Email ?? "N/A")</td>
+                    <td>@(up.StudyProgram?.Name ?? "N/A")</td>
+                    <td>@(up.StudyProgram?.Faculty?.Name ?? "N/A")</td>
+                    <td>
+                        <a asp-action="Edit" asp-route-userId="@up.UserId" asp-route-studyProgramId="@up.StudyProgramId" class="btn btn-sm btn-primary">Edit</a>
+                     
+                        <a asp-action="Delete" asp-route-userId="@up.UserId" asp-route-studyProgramId="@up.StudyProgramId" class="btn btn-sm btn-danger">Delete</a>
+                    </td>
+                </tr>
+                counter++;
+            }
+        }
     </tbody>
 </table>

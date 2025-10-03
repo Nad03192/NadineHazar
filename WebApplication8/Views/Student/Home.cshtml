@@ -1,0 +1,137 @@
+﻿@{
+    ViewData["Title"] = "Student Home";
+}
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<h2 class="mb-4 text-center">🎓 Student Dashboard</h2>
+
+<div class="chart-container text-center mb-4">
+    <canvas id="progressChart" width="150" height="150"></canvas>
+    <div class="chart-label">Progress</div>
+</div>
+
+<div class="dashboard-section">
+    <div class="d-flex flex-wrap gap-4 justify-content-center">
+        <a asp-action="MyClasses" asp-controller="Student" class="dashboard-box text-decoration-none">
+            <i class="fas fa-school fa-2x mb-2"></i>
+            <div>My Classes</div>
+        </a>
+        <a asp-action="DropClasses" asp-controller="Student" class="dashboard-box text-decoration-none">
+            <i class="fas fa-trash-alt fa-2x mb-2"></i>
+            <div>Drop Classes</div>
+        </a>
+        <a asp-action="SwapClasses" asp-controller="Student" class="dashboard-box text-decoration-none">
+            <i class="fas fa-exchange-alt fa-2x mb-2"></i>
+            <div>Swap Classes</div>
+        </a>
+
+
+
+        <a asp-action="MyGrades" asp-controller="Student" class="dashboard-box text-decoration-none">
+            <i class="fas fa-graduation-cap fa-2x mb-2"></i>
+            <div>My Grades</div>
+        </a>
+        <a asp-action="EnrollAddDrop" asp-controller="Student" class="dashboard-box text-decoration-none">
+            <i class="fas fa-user-plus fa-2x mb-2"></i>
+            <div>Enroll / Add & Drop</div>
+        </a>
+                <a asp-controller="Enrollments" asp-action="Enroll" class="dashboard-box text-decoration-none">
+                    <i class="fas fa-user-plus fa-2x mb-2"></i>
+                    <div>Enroll</div>
+                </a>
+            
+
+    </div>
+</div>
+
+<style>
+    .dashboard-section {
+        margin-bottom: 2rem;
+    }
+
+    .dashboard-box {
+        width: 180px;
+        height: 150px;
+        background-color: #f8f9fa;
+        border: 1px solid #ddd;
+        border-radius: 12px;
+        box-shadow: 2px 2px 10px rgba(0,0,0,0.05);
+        color: #333;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        transition: transform 0.2s, box-shadow 0.2s;
+        flex: 1 1 180px;
+    }
+
+        .dashboard-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 4px 4px 15px rgba(0,0,0,0.1);
+            background-color: #e2e6ea;
+        }
+
+        .dashboard-box i {
+            color: #0d6efd;
+        }
+
+    .chart-container {
+        position: relative;
+        width: 150px;
+        height: 150px;
+        margin: 0 auto;
+    }
+
+    .chart-label {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
+
+    @@media (max-width: 768px) {
+        .dashboard-box
+
+    {
+        width: 100%;
+        height: auto;
+        padding: 1rem;
+    }
+
+    .d-flex.flex-wrap.gap-4 {
+        gap: 1rem;
+    }
+
+    }
+</style>
+
+@section Scripts {
+    <script>
+        // Example: percentage of classes passed from enrolled study programs
+        var passedPercentage = @Model.PassedPercentage; // set in controller as 0-100
+
+        var ctx = document.getElementById('progressChart').getContext('2d');
+        var progressChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Passed', 'Remaining'],
+                datasets: [{
+                    data: [passedPercentage, 100 - passedPercentage],
+                    backgroundColor: ['#0d6efd', '#e9ecef'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                cutout: '70%',
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    </script>
+}

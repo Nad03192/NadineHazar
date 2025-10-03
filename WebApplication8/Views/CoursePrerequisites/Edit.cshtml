@@ -4,17 +4,30 @@
     ViewData["Title"] = "Edit";
 }
 
-<h1>Edit</h1>
+<h1>Edit Course Prerequisite</h1>
 
 <h4>CoursePrerequisite</h4>
 <hr />
 <div class="row">
     <div class="col-md-4">
-        <form asp-action="Edit">
+        <form asp-action="Edit" method="post">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            @* Hidden fields for original composite key values *@
             <input type="hidden" asp-for="CourseId" />
             <input type="hidden" asp-for="PrerequisiteId" />
+
             <div class="form-group">
+                <label asp-for="CourseId" class="control-label">Course</label>
+                <select asp-for="CourseId" class="form-control" asp-items="ViewBag.CourseId"></select>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="PrerequisiteId" class="control-label">Prerequisite</label>
+                <select asp-for="PrerequisiteId" class="form-control" asp-items="ViewBag.PrerequisiteId"></select>
+            </div>
+
+            <div class="form-group mt-2">
                 <input type="submit" value="Save" class="btn btn-primary" />
             </div>
         </form>
@@ -26,5 +39,7 @@
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 }

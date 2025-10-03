@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -22,12 +20,12 @@ namespace WebApplication8.Controllers
             _userManager = userManager;
         }
 
-        // Helper method to get the logged-in user's managed study program
+        // Helper method to get logged-in user's managed study program
         private async Task<int?> GetManagedStudyProgramId()
         {
             var userId = _userManager.GetUserId(User);
             if (User.IsInRole("Admin"))
-                return null; // Admin can access everything
+                return null; // Admin can access all
 
             var manager = await _context.ProgramManager
                 .FirstOrDefaultAsync(pm => pm.UserId == userId);
@@ -36,7 +34,7 @@ namespace WebApplication8.Controllers
         }
 
         // GET: ProgramCourses
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string search, int? courseTypeId)
         {
             var managedProgramId = await GetManagedStudyProgramId();
 
@@ -47,23 +45,27 @@ namespace WebApplication8.Controllers
                 .AsQueryable();
 
             if (managedProgramId.HasValue)
-            {
                 query = query.Where(pc => pc.StudyProgramId == managedProgramId.Value);
-            }
+
+            if (!string.IsNullOrEmpty(search))
+                query = query.Where(pc => pc.Course.Name.Contains(search));
+
+            if (courseTypeId.HasValue)
+                query = query.Where(pc => pc.CourseTypeId == courseTypeId.Value);
+
+            ViewBag.CourseTypes = new SelectList(_context.CourseTypes, "CourseTypeId", "Name", courseTypeId);
 
             return View(await query.ToListAsync());
         }
 
-        // GET: ProgramCourses/Details/5
-        public async Task<IActionResult> Details(int? id)
+        // GET: ProgramCourses/Details
+        public async Task<IActionResult> Details(int studyProgramId, int courseId)
         {
-            if (id == null) return NotFound();
-
             var programCourse = await _context.ProgramCourses
                 .Include(p => p.Course)
                 .Include(p => p.CourseType)
                 .Include(p => p.StudyProgram)
-                .FirstOrDefaultAsync(m => m.StudyProgramId == id);
+                .FirstOrDefaultAsync(pc => pc.StudyProgramId == studyProgramId && pc.CourseId == courseId);
 
             if (programCourse == null) return NotFound();
 
@@ -80,17 +82,13 @@ namespace WebApplication8.Controllers
             var managedProgramId = await GetManagedStudyProgramId();
 
             if (managedProgramId.HasValue)
-            {
                 ViewData["StudyProgramId"] = new SelectList(
                     _context.StudyPrograms.Where(sp => sp.StudyProgramId == managedProgramId.Value),
                     "StudyProgramId", "Name");
-            }
             else
-            {
                 ViewData["StudyProgramId"] = new SelectList(_context.StudyPrograms, "StudyProgramId", "Name");
-            }
 
-            ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "CourseId");
+            ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "Name");
             ViewData["CourseTypeId"] = new SelectList(_context.CourseTypes, "CourseTypeId", "Name");
             return View();
         }
@@ -104,6 +102,15 @@ namespace WebApplication8.Controllers
             if (managedProgramId.HasValue && programCourse.StudyProgramId != managedProgramId.Value)
                 return Forbid();
 
+            // ✅ Check uniqueness
+            bool exists = await _context.ProgramCourses
+                .AnyAsync(pc => pc.StudyProgramId == programCourse.StudyProgramId && pc.CourseId == programCourse.CourseId);
+
+            if (exists)
+            {
+                ModelState.AddModelError("", "This course is already assigned to this study program.");
+            }
+
             if (ModelState.IsValid)
             {
                 _context.Add(programCourse);
@@ -111,40 +118,49 @@ namespace WebApplication8.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "CourseId", programCourse.CourseId);
+            ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "Name", programCourse.CourseId);
             ViewData["CourseTypeId"] = new SelectList(_context.CourseTypes, "CourseTypeId", "Name", programCourse.CourseTypeId);
             ViewData["StudyProgramId"] = new SelectList(_context.StudyPrograms, "StudyProgramId", "Name", programCourse.StudyProgramId);
             return View(programCourse);
         }
 
-        // GET: ProgramCourses/Edit/5
-        public async Task<IActionResult> Edit(int? id)
-        {
-            if (id == null) return NotFound();
 
-            var programCourse = await _context.ProgramCourses.FindAsync(id);
+        // GET: ProgramCourses/Edit
+        public async Task<IActionResult> Edit(int studyProgramId, int courseId)
+        {
+            var programCourse = await _context.ProgramCourses
+                .FirstOrDefaultAsync(pc => pc.StudyProgramId == studyProgramId && pc.CourseId == courseId);
+
             if (programCourse == null) return NotFound();
 
             var managedProgramId = await GetManagedStudyProgramId();
             if (managedProgramId.HasValue && programCourse.StudyProgramId != managedProgramId.Value)
                 return Forbid();
 
-            ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "CourseId", programCourse.CourseId);
+            ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "Name", programCourse.CourseId);
             ViewData["CourseTypeId"] = new SelectList(_context.CourseTypes, "CourseTypeId", "Name", programCourse.CourseTypeId);
             ViewData["StudyProgramId"] = new SelectList(_context.StudyPrograms, "StudyProgramId", "Name", programCourse.StudyProgramId);
             return View(programCourse);
         }
 
-        // POST: ProgramCourses/Edit/5
+        // POST: ProgramCourses/Edit
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("StudyProgramId,CourseId,CourseTypeId")] ProgramCourse programCourse)
+        public async Task<IActionResult> Edit(int studyProgramId, int courseId, [Bind("StudyProgramId,CourseId,CourseTypeId")] ProgramCourse programCourse)
         {
-            if (id != programCourse.StudyProgramId) return NotFound();
+            if (studyProgramId != programCourse.StudyProgramId || courseId != programCourse.CourseId)
+                return NotFound();
 
-            var managedProgramId = await GetManagedStudyProgramId();
-            if (managedProgramId.HasValue && programCourse.StudyProgramId != managedProgramId.Value)
-                return Forbid();
+            // ✅ Check uniqueness excluding the current record
+            bool exists = await _context.ProgramCourses
+                .AnyAsync(pc => pc.StudyProgramId == programCourse.StudyProgramId
+                            && pc.CourseId == programCourse.CourseId
+                            && (pc.StudyProgramId != studyProgramId || pc.CourseId != courseId));
+
+            if (exists)
+            {
+                ModelState.AddModelError("", "This course is already assigned to this study program.");
+            }
 
             if (ModelState.IsValid)
             {
@@ -155,28 +171,28 @@ namespace WebApplication8.Controllers
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!ProgramCourseExists(programCourse.StudyProgramId)) return NotFound();
+                    if (!_context.ProgramCourses.Any(pc => pc.StudyProgramId == studyProgramId && pc.CourseId == courseId))
+                        return NotFound();
                     else throw;
                 }
                 return RedirectToAction(nameof(Index));
             }
 
-            ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "CourseId", programCourse.CourseId);
+            ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "Name", programCourse.CourseId);
             ViewData["CourseTypeId"] = new SelectList(_context.CourseTypes, "CourseTypeId", "Name", programCourse.CourseTypeId);
             ViewData["StudyProgramId"] = new SelectList(_context.StudyPrograms, "StudyProgramId", "Name", programCourse.StudyProgramId);
             return View(programCourse);
         }
 
-        // GET: ProgramCourses/Delete/5
-        public async Task<IActionResult> Delete(int? id)
-        {
-            if (id == null) return NotFound();
 
+        // GET: ProgramCourses/Delete
+        public async Task<IActionResult> Delete(int studyProgramId, int courseId)
+        {
             var programCourse = await _context.ProgramCourses
-                .Include(p => p.Course)
-                .Include(p => p.CourseType)
-                .Include(p => p.StudyProgram)
-                .FirstOrDefaultAsync(m => m.StudyProgramId == id);
+                .Include(pc => pc.Course)
+                .Include(pc => pc.CourseType)
+                .Include(pc => pc.StudyProgram)
+                .FirstOrDefaultAsync(pc => pc.StudyProgramId == studyProgramId && pc.CourseId == courseId);
 
             if (programCourse == null) return NotFound();
 
@@ -187,12 +203,13 @@ namespace WebApplication8.Controllers
             return View(programCourse);
         }
 
-        // POST: ProgramCourses/Delete/5
+        // POST: ProgramCourses/Delete
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
+        public async Task<IActionResult> DeleteConfirmed(int studyProgramId, int courseId)
         {
-            var programCourse = await _context.ProgramCourses.FindAsync(id);
+            var programCourse = await _context.ProgramCourses
+                .FirstOrDefaultAsync(pc => pc.StudyProgramId == studyProgramId && pc.CourseId == courseId);
 
             var managedProgramId = await GetManagedStudyProgramId();
             if (managedProgramId.HasValue && programCourse.StudyProgramId != managedProgramId.Value)
@@ -205,11 +222,6 @@ namespace WebApplication8.Controllers
             }
 
             return RedirectToAction(nameof(Index));
-        }
-
-        private bool ProgramCourseExists(int id)
-        {
-            return _context.ProgramCourses.Any(e => e.StudyProgramId == id);
         }
     }
 }

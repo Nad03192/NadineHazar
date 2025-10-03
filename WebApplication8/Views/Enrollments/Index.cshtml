@@ -1,47 +1,94 @@
 ﻿@model IEnumerable<WebApplication8.Models.Enrollment>
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Enrollments";
 }
 
-<h1>Index</h1>
+<h1>Enrollments</h1>
+
+<!-- Filters -->
+<form method="get" class="mb-3 row g-2">
+    <div class="col-auto">
+        <input type="text" name="searchEmail" class="form-control" placeholder="Search by email"
+               value="@ViewBag.SearchEmail" />
+    </div>
+    <div class="col-auto">
+        <select name="classId" class="form-control" asp-items="ViewBag.Classes">
+            <option value="">-- All Classes --</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <select name="courseId" class="form-control" asp-items="ViewBag.Courses">
+            <option value="">-- All Courses --</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <select name="instructorId" class="form-control" asp-items="ViewBag.Instructors">
+            <option value="">-- All Instructors --</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <select name="facultyId" class="form-control" asp-items="ViewBag.Faculties">
+            <option value="">-- All Faculties --</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <select name="semesterId" class="form-control" asp-items="ViewBag.Semesters">
+            <option value="">-- All Semesters --</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <select name="studyProgramId" class="form-control" asp-items="ViewBag.StudyPrograms">
+            <option value="">-- All Study Programs --</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Filter</button>
+        <a asp-action="Index" class="btn btn-secondary">Reset</a>
+    </div>
+</form>
 
 <p>
-    <a asp-action="Create">Create New</a>
+    <a asp-action="Create" class="btn btn-success">Create New</a>
 </p>
-<table class="table">
+
+<table class="table table-striped">
     <thead>
         <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.User)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Class)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.EnrollmentDate)
-            </th>
+            <th>Student Email</th>
+            <th>Class</th>
+            <th>Course</th>
+            <th>Instructor</th>
+            <th>Semester</th>
+            <th>Enrollment Date</th>
             <th></th>
         </tr>
     </thead>
     <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.User.Id)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Class.ClassId)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.EnrollmentDate)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
-            </td>
-        </tr>
-}
+        @if (!Model.Any())
+        {
+            <tr>
+                <td colspan="7" class="text-center text-muted">No enrollments found.</td>
+            </tr>
+        }
+        else
+        {
+            foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.User?.Email</td>
+                    <td>@item.Class?.ClassId</td>
+                    <td>@item.Class?.Course?.Name</td>
+                    <td>@item.Class?.User?.Email</td>
+                    <td>@item.Class?.Semester?.Name</td>
+                    <td>@item.EnrollmentDate.ToString("yyyy-MM-dd")</td>
+                    <td>
+                        <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
+                        <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
+                        <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
+                    </td>
+                </tr>
+            }
+        }
     </tbody>
 </table>

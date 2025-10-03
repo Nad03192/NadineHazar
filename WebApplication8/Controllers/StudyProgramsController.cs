@@ -72,15 +72,25 @@ namespace WebApplication8.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("StudyProgramId,Name,FacultyId,TotalCredits")] StudyProgram studyProgram)
         {
+            bool exists = await _context.StudyPrograms
+     .AnyAsync(sp => sp.Name == studyProgram.Name);
+
+            if (exists)
+            {
+                ModelState.AddModelError("Name", "A study program with this name already exists in the selected faculty.");
+            }
+
             if (ModelState.IsValid)
             {
                 _context.Add(studyProgram);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
+
             ViewData["FacultyId"] = new SelectList(_context.Faculties, "FacultyId", "Name", studyProgram.FacultyId);
             return View(studyProgram);
         }
+
 
 
         // GET: StudyPrograms/Edit/5
@@ -108,8 +118,14 @@ namespace WebApplication8.Controllers
         public async Task<IActionResult> Edit(int id, [Bind("StudyProgramId,Name,FacultyId,TotalCredits")] StudyProgram studyProgram)
         {
             if (id != studyProgram.StudyProgramId)
-            {
                 return NotFound();
+
+            bool exists = await _context.StudyPrograms
+     .AnyAsync(sp => sp.Name == studyProgram.Name);
+
+            if (exists)
+            {
+                ModelState.AddModelError("Name", "A study program with this name already exists in the selected faculty.");
             }
 
             if (ModelState.IsValid)
@@ -122,19 +138,18 @@ namespace WebApplication8.Controllers
                 catch (DbUpdateConcurrencyException)
                 {
                     if (!StudyProgramExists(studyProgram.StudyProgramId))
-                    {
                         return NotFound();
-                    }
                     else
-                    {
                         throw;
-                    }
                 }
                 return RedirectToAction(nameof(Index));
             }
+
             ViewData["FacultyId"] = new SelectList(_context.Faculties, "FacultyId", "Name", studyProgram.FacultyId);
             return View(studyProgram);
         }
+
+
 
         // GET: StudyPrograms/Delete/5
         public async Task<IActionResult> Delete(int? id)

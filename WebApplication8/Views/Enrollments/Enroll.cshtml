@@ -1,0 +1,91 @@
+﻿@model WebApplication8.Models.EnrollViewModelClasses
+
+<h1>Enroll in Classes</h1>
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+}
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
+
+<div class="row mb-3">
+    <div class="col-md-6">
+        <label>Search by Course Name:</label>
+        <input type="text" id="courseSearch" class="form-control" placeholder="Type course name..." />
+    </div>
+    <div class="col-md-6">
+        <label>Filter by Course Type:</label>
+        <select id="courseTypeFilter" class="form-control">
+            <option value="">-- All Types --</option>
+            @foreach (var type in Model.CourseTypes)
+            {
+                <option value="@type">@type</option>
+            }
+        </select>
+    </div>
+</div>
+<div class="row" id="classesContainer">
+    @foreach (var cls in Model.Classes)
+    {
+        // Declare variables directly, no @{} needed
+        string btnClass = cls.CanEnroll ? "btn-primary" : "btn-secondary";
+        string btnText = cls.CanEnroll ? "Enroll" : cls.DisableReason;
+        string btnTooltip = cls.CanEnroll ? "" : cls.DisableReason;
+        bool disabled = !cls.CanEnroll;
+
+        <div class="col-md-4 mb-3 class-card" data-type="@cls.CourseTypeName" data-name="@cls.CourseName.ToLower()">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">@cls.CourseName</h5>
+                    <p class="card-text mb-1"><strong>Course Type:</strong> @cls.CourseTypeName</p>
+                    <p class="card-text mb-1"><strong>Instructor:</strong> @cls.InstructorUserName</p>
+                    <p class="card-text mb-1"><strong>Day & Time:</strong> @cls.DayOfWeek @cls.StartTime</p>
+                    <p class="card-text mb-1"><strong>Room:</strong> @cls.RoomName (@cls.BuildingName)</p>
+                    <p class="card-text mb-1"><strong>Available Seats:</strong> @cls.AvailableSeats</p>
+                    <form asp-action="EnrollStudent" method="post">
+                        <input type="hidden" name="classId" value="@cls.ClassId" />
+                        <button type="submit"
+                                class="btn w-100 @btnClass"
+                        @(disabled ? $"disabled='disabled' title='{btnTooltip}'" : "")>
+                            @btnText
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+
+
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            let allCards = $("#classesContainer .class-card").clone();
+
+            function filterClasses() {
+                let search = $("#courseSearch").val().toLowerCase();
+                let type = $("#courseTypeFilter").val();
+
+                $("#classesContainer").empty();
+
+                allCards.each(function () {
+                    let card = $(this);
+                    let name = card.data("name");
+                    let cardType = card.data("type");
+
+                    if ((search === "" || name.includes(search)) &&
+                        (type === "" || cardType === type)) {
+                        $("#classesContainer").append(card);
+                    }
+                });
+            }
+
+            $("#courseSearch, #courseTypeFilter").on("input change", filterClasses);
+        });
+    </script>
+}

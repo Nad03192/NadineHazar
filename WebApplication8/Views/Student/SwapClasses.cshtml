@@ -1,0 +1,44 @@
+﻿@model List<WebApplication8.Models.MyClassViewModel>
+
+<h1>Swap Classes - @ViewBag.SemesterName</h1>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">
+        You are not enrolled in any classes for the current semester or add/drop period has ended.
+    </div>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Course Name</th>
+                <th>Course Type</th>
+                <th>Instructor</th>
+                <th>Day & Time</th>
+                <th>Room</th>
+                <th>Credits</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var cls in Model)
+            {
+                <tr>
+                    <td>@cls.CourseName</td>
+                    <td>@cls.CourseTypeName</td>
+                    <td>@cls.InstructorUserName</td>
+                    <td>@cls.DayOfWeek @cls.StartTime</td>
+                    <td>@cls.RoomName (@cls.BuildingName)</td>
+                    <td>@cls.CreditNumber</td>
+                    <td>
+                        <a asp-action="SwapClass" asp-route-classId="@cls.ClassId" class="btn btn-primary btn-sm">
+                            Swap
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

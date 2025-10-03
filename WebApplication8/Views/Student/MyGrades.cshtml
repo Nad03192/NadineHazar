@@ -1,0 +1,89 @@
+﻿@model WebApplication8.Models.StudentGradesViewModel
+
+<h2>My Grades</h2>
+
+<div class="row mb-3">
+    <div class="col-md-3">
+        <label>Semester:</label>
+        <select id="semesterSelect" class="form-control">
+            <option value="">-- All Semesters --</option>
+            @foreach (var semester in Model.Semesters)
+            {
+                <option value="@semester.SemesterId">@semester.Name (@semester.StartDate.ToShortDateString() - @semester.EndDate.ToShortDateString())</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label>Course Type:</label>
+        <select id="courseTypeSelect" class="form-control">
+            <option value="">-- All Types --</option>
+            @foreach (var ct in Model.CourseTypes)
+            {
+                <option value="@ct.CourseTypeId">@ct.Name</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label>Search Course:</label>
+        <input type="text" id="searchInput" class="form-control" placeholder="Course Name" />
+    </div>
+    <div class="col-md-3 d-flex align-items-end">
+        <button id="filterBtn" class="btn btn-primary w-100">Filter</button>
+    </div>
+</div>
+
+<div id="gradesContainer"></div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            function loadGrades() {
+                var semesterId = $("#semesterSelect").val();
+                var courseTypeId = $("#courseTypeSelect").val();
+                var search = $("#searchInput").val();
+
+                $.getJSON('@Url.Action("GetGrades", "Student")', {
+                    semesterId: semesterId,
+                    courseTypeId: courseTypeId,
+                    search: search
+                }, function (data) {
+                    var html = "";
+                    if (data.length === 0) {
+                        html = "<p>No grades found.</p>";
+                    } else {
+                        data.forEach(function (course) {
+                            html += `<h4>${course.courseName}</h4>`;
+                            html += `<table class="table table-bordered">
+                                        <thead>
+                                            <tr>
+                                                <th>Grade Definition</th>
+                                                <th>Coefficient</th>
+                                                <th>Score</th>
+                                            </tr>
+                                        </thead><tbody>`;
+                            course.grades.forEach(function (g) {
+                                html += `<tr>
+                                            <td>${g.gradeDefinitionName}</td>
+                                            <td>${g.coefficient}</td>
+                                            <td>${g.score !== null ? g.score : "-"}</td>
+                                        </tr>`;
+                            });
+                            html += `</tbody></table>`;
+                            html += `<p><strong>Final Grade:</strong> ${course.finalGrade.toFixed(2)}</p>`;
+                            html += `<p><strong>Status:</strong> ${course.status}</p>`;
+                        });
+                    }
+                    $("#gradesContainer").html(html);
+                });
+            }
+
+            // Initial load: show all grades
+            loadGrades();
+
+            // Trigger load when clicking Filter button
+            $("#filterBtn").click(function () {
+                loadGrades();
+            });
+        });
+    </script>
+}

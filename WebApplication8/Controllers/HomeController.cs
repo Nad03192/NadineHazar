@@ -30,6 +30,8 @@ namespace WebApplication8.Controllers
                 return RedirectToAction("Home", "Admin");
             else if (roles.Contains("Instructor"))
                 return RedirectToAction("Home", "Instructor");
+            else if (roles.Contains("Student"))
+                return RedirectToAction("Home", "Student");
             else
                 return View(); // default view for other roles
         }

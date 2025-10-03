@@ -24,13 +24,53 @@ namespace WebApplication8.Controllers
         }
 
         // GET: Availabilities
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string search, int? shiftId, DayOfWeek? dayOfWeek)
         {
             var availabilities = _context.Availabilities
                 .Include(a => a.Shift)
-                .Include(a => a.User);
+                .Include(a => a.User)
+                .AsQueryable();
+
+            // Filter by User Email search
+            if (!string.IsNullOrEmpty(search))
+            {
+                availabilities = availabilities.Where(a =>
+                    a.User != null && a.User.Email.Contains(search));
+            }
+
+            // Filter by Shift
+            if (shiftId.HasValue)
+                availabilities = availabilities.Where(a => a.ShiftId == shiftId.Value);
+
+            // Filter by DayOfWeek
+            if (dayOfWeek.HasValue)
+                availabilities = availabilities.Where(a => a.DayOfWeek == dayOfWeek.Value);
+
+            // Prepare Shift dropdown
+            var shifts = await _context.Shifts.ToListAsync();
+            ViewBag.Shifts = new SelectList(
+                shifts.Select(s => new
+                {
+                    s.ShiftId,
+                    Text = s.StartTime.ToString(@"hh\:mm") + " - " + s.EndTime.ToString(@"hh\:mm")
+                }),
+                "ShiftId",
+                "Text",
+                shiftId
+            );
+
+            // Prepare DayOfWeek dropdown
+            var days = Enum.GetValues(typeof(DayOfWeek)).Cast<DayOfWeek>().ToList();
+            ViewBag.DaysOfWeek = new SelectList(days, dayOfWeek);
+
+            // Preserve search text in the view
+            ViewBag.Search = search;
+
             return View(await availabilities.ToListAsync());
         }
+
+        // Other CRUD actions...
+    
 
         // GET: Availabilities/Create
         public async Task<IActionResult> Create()
@@ -38,14 +78,54 @@ namespace WebApplication8.Controllers
             await PopulateViewDataAsync();
             return View();
         }
-
-        // POST: Availabilities/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("AvailabilityId,ShiftId,UserId,DayOfWeek")] Availability availability)
         {
             if (ModelState.IsValid)
             {
+                var shift = await _context.Shifts.FindAsync(availability.ShiftId);
+                if (shift == null)
+                {
+                    ModelState.AddModelError("", "Selected shift not found.");
+                    await PopulateViewDataAsync(availability.ShiftId, availability.UserId);
+                    return View(availability);
+                }
+
+                // 1. Check overlapping shifts for same user on the same day
+                var userAvailabilities = await _context.Availabilities
+                    .Include(a => a.Shift)
+                    .Where(a => a.UserId == availability.UserId && a.DayOfWeek == availability.DayOfWeek)
+                    .ToListAsync();
+
+                bool overlapExists = userAvailabilities.Any(a =>
+                    a.Shift.StartTime < shift.EndTime && shift.StartTime < a.Shift.EndTime);
+
+                if (overlapExists)
+                {
+                    ModelState.AddModelError("", "This shift overlaps with an existing availability for this user on the same day.");
+                    await PopulateViewDataAsync(availability.ShiftId, availability.UserId);
+                    return View(availability);
+                }
+
+                // 2. Check total assigned hours against loaded hours (manual calculation)
+                var userLoadedTime = await _context.LoadedTimes
+                    .Where(l => l.UserId == availability.UserId)
+                    .Select(l => l.HoursPerWeek)
+                    .FirstOrDefaultAsync();
+
+                double totalAssignedHours = userAvailabilities
+                    .Sum(a => (a.Shift.EndTime - a.Shift.StartTime).TotalHours);
+
+                double newShiftHours = (shift.EndTime - shift.StartTime).TotalHours;
+
+                if (totalAssignedHours + newShiftHours > userLoadedTime)
+                {
+                    ModelState.AddModelError("", "Cannot add this shift. Total assigned hours would exceed loaded hours.");
+                    await PopulateViewDataAsync(availability.ShiftId, availability.UserId);
+                    return View(availability);
+                }
+
                 _context.Add(availability);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
@@ -54,6 +134,8 @@ namespace WebApplication8.Controllers
             await PopulateViewDataAsync(availability.ShiftId, availability.UserId);
             return View(availability);
         }
+
+
 
         // GET: Availabilities/Edit/5
         public async Task<IActionResult> Edit(int? id)
@@ -67,7 +149,6 @@ namespace WebApplication8.Controllers
             return View(availability);
         }
 
-        // POST: Availabilities/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("AvailabilityId,ShiftId,UserId,DayOfWeek")] Availability availability)
@@ -76,6 +157,50 @@ namespace WebApplication8.Controllers
 
             if (ModelState.IsValid)
             {
+                var shift = await _context.Shifts.FindAsync(availability.ShiftId);
+                if (shift == null)
+                {
+                    ModelState.AddModelError("", "Selected shift not found.");
+                    await PopulateViewDataAsync(availability.ShiftId, availability.UserId);
+                    return View(availability);
+                }
+
+                // Get existing availabilities excluding the current one
+                var userAvailabilities = await _context.Availabilities
+                    .Include(a => a.Shift)
+                    .Where(a => a.UserId == availability.UserId && a.AvailabilityId != availability.AvailabilityId)
+                    .ToListAsync();
+
+                // 1. Check overlapping shifts
+                bool overlapExists = userAvailabilities
+                    .Where(a => a.DayOfWeek == availability.DayOfWeek)
+                    .Any(a => a.Shift.StartTime < shift.EndTime && shift.StartTime < a.Shift.EndTime);
+
+                if (overlapExists)
+                {
+                    ModelState.AddModelError("", "This shift overlaps with an existing availability for this user on the same day.");
+                    await PopulateViewDataAsync(availability.ShiftId, availability.UserId);
+                    return View(availability);
+                }
+
+                // 2. Check total hours manually
+                var userLoadedTime = await _context.LoadedTimes
+                    .Where(l => l.UserId == availability.UserId)
+                    .Select(l => l.HoursPerWeek)
+                    .FirstOrDefaultAsync();
+
+                double totalAssignedHours = userAvailabilities
+                    .Sum(a => (a.Shift.EndTime - a.Shift.StartTime).TotalHours);
+
+                double newShiftHours = (shift.EndTime - shift.StartTime).TotalHours;
+
+                if (totalAssignedHours + newShiftHours > userLoadedTime)
+                {
+                    ModelState.AddModelError("", "Cannot add this shift. Total assigned hours would exceed loaded hours.");
+                    await PopulateViewDataAsync(availability.ShiftId, availability.UserId);
+                    return View(availability);
+                }
+
                 try
                 {
                     _context.Update(availability);
@@ -88,6 +213,7 @@ namespace WebApplication8.Controllers
                     else
                         throw;
                 }
+
                 return RedirectToAction(nameof(Index));
             }
 
@@ -132,33 +258,16 @@ namespace WebApplication8.Controllers
         // Helper: Populate ViewData for SelectLists
         private async Task PopulateViewDataAsync(int? selectedShiftId = null, string selectedUserId = null, DayOfWeek? selectedDayOfWeek = null)
         {
-            // Prepare Shifts SelectList with display string of start and end time (since no Name property)
-            var shifts = await _context.Shifts
-                .Select(s => new
-                {
-                    s.ShiftId,
-                    Display = $"{s.StartTime:hh\\:mm} - {s.EndTime:hh\\:mm}"
-                })
-                .ToListAsync();
-
-            ViewData["ShiftId"] = new SelectList(shifts, "ShiftId", "Display", selectedShiftId);
-
-            // Prepare Users in Instructor role who do NOT already have an availability (optional: you can filter differently if needed)
+            // Users
             var instructors = await GetInstructorsAsync();
+            ViewBag.Users = new SelectList(instructors, "Id", "Email", selectedUserId);
 
-            ViewData["UserId"] = new SelectList(instructors, "Id", "Email", selectedUserId);
-
-            // Prepare DayOfWeek SelectList (int values and string names)
+            // Days
             var daysOfWeek = Enum.GetValues(typeof(DayOfWeek))
                                  .Cast<DayOfWeek>()
-                                 .Select(d => new
-                                 {
-                                     Value = (int)d,
-                                     Text = d.ToString()
-                                 })
+                                 .Select(d => new { Value = (int)d, Text = d.ToString() })
                                  .ToList();
-
-            ViewData["DayOfWeek"] = new SelectList(daysOfWeek, "Value", "Text", selectedDayOfWeek);
+            ViewBag.DayOfWeekList = new SelectList(daysOfWeek, "Value", "Text", selectedDayOfWeek);
         }
 
 
@@ -306,6 +415,57 @@ namespace WebApplication8.Controllers
 
             return Content("Shift added successfully.");
         }
+        [HttpGet]
+        public async Task<JsonResult> GetAvailableShifts(string userId, int? dayOfWeek)
+        {
+            if (string.IsNullOrEmpty(userId))
+                return Json(new List<object>());
+
+            // Get user's loaded hours
+            var userLoadedTime = await _context.LoadedTimes
+                .Where(l => l.UserId == userId)
+                .Select(l => l.HoursPerWeek)
+                .FirstOrDefaultAsync();
+
+            // Get all shifts
+            var allShifts = await _context.Shifts.ToListAsync();
+
+            // Get all existing availabilities for this user
+            var userAvailabilities = await _context.Availabilities
+                .Include(a => a.Shift)
+                .Where(a => a.UserId == userId)
+                .ToListAsync();
+
+            // Calculate total assigned hours
+            double assignedHours = userAvailabilities.Sum(a => (a.Shift.EndTime - a.Shift.StartTime).TotalHours);
+
+            // Remaining hours
+            double remainingHours = userLoadedTime - assignedHours;
+            if (remainingHours <= 0)
+                return Json(new List<object>()); // No hours left
+
+            // Filter existing availabilities by selected day
+            var dayAvailabilities = dayOfWeek.HasValue
+                ? userAvailabilities.Where(a => a.DayOfWeek == (DayOfWeek)dayOfWeek.Value).ToList()
+                : new List<Availability>();
+
+            // Filter shifts: no overlap and duration <= remainingHours
+            var availableShifts = allShifts
+                .Where(s =>
+                    !dayAvailabilities.Any(a => a.Shift.StartTime < s.EndTime && s.StartTime < a.Shift.EndTime) &&
+                    (s.EndTime - s.StartTime).TotalHours <= remainingHours
+                )
+                .Select(s => new
+                {
+                    s.ShiftId,
+                    Text = $"{s.StartTime:hh\\:mm} - {s.EndTime:hh\\:mm}"
+                })
+                .ToList();
+
+            return Json(availableShifts);
+        }
+
+
 
 
     }

@@ -1,47 +1,45 @@
 ﻿@model IEnumerable<WebApplication8.Models.ProgramCourse>
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Program Courses";
 }
 
-<h1>Index</h1>
+<h1>Program Courses</h1>
+<p> <a asp-action="Create">Create New</a> </p>
+<form method="get" class="mb-3 d-flex gap-2">
+    <input type="text" name="search" value="@ViewBag.SearchTerm" class="form-control" placeholder="Search by course name..." />
 
-<p>
-    <a asp-action="Create">Create New</a>
-</p>
-<table class="table">
+    <select name="courseTypeId" class="form-control" asp-items="ViewBag.CourseTypes">
+        <option value="">-- All Types --</option>
+    </select>
+
+    <button type="submit" class="btn btn-primary">Filter</button>
+</form>
+
+<table class="table table-striped">
     <thead>
         <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.StudyProgram)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Course)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.CourseType)
-            </th>
+            <th>Study Program</th>
+            <th>Course</th>
+            <th>Course Type</th>
             <th></th>
         </tr>
     </thead>
     <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.StudyProgram.Name)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Course.CourseId)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.CourseType.Name)
-            </td>
-            <td>
-                @Html.ActionLink("Edit", "Edit", new { /* id=item.PrimaryKey */ }) |
-                @Html.ActionLink("Details", "Details", new { /* id=item.PrimaryKey */ }) |
-                @Html.ActionLink("Delete", "Delete", new { /* id=item.PrimaryKey */ })
-            </td>
-        </tr>
-}
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.StudyProgram.Name</td>
+                <td>@item.Course.Name</td>
+                <td>@item.CourseType.Name</td>
+                <td>
+                <td>
+                    <a asp-action="Edit" asp-route-studyProgramId="@item.StudyProgramId" asp-route-courseId="@item.CourseId">Edit</a> |
+                    <a asp-action="Details" asp-route-studyProgramId="@item.StudyProgramId" asp-route-courseId="@item.CourseId">Details</a> |
+                    <a asp-action="Delete" asp-route-studyProgramId="@item.StudyProgramId" asp-route-courseId="@item.CourseId">Delete</a>
+                </td>
+
+            </tr>
+        }
     </tbody>
 </table>

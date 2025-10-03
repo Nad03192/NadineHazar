@@ -20,10 +20,29 @@ namespace WebApplication8.Controllers
         }
 
         // GET: GradeDefinitions
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string searchCourse, int? studyProgramId)
         {
-            var applicationDbContext = _context.GradeDefinitions.Include(g => g.Course);
-            return View(await applicationDbContext.ToListAsync());
+            // Base query including Course and ProgramCourses for filtering
+            var gradeDefinitions = _context.GradeDefinitions
+                .Include(g => g.Course)
+                .ThenInclude(c => c.ProgramCourses)
+                .ThenInclude(pc => pc.StudyProgram)
+                .AsQueryable();
+
+            // Filter by course name
+            if (!string.IsNullOrEmpty(searchCourse))
+                gradeDefinitions = gradeDefinitions.Where(g => g.Course.Name.Contains(searchCourse));
+
+            // Filter by study program
+            if (studyProgramId.HasValue)
+                gradeDefinitions = gradeDefinitions.Where(g =>
+                    g.Course.ProgramCourses.Any(pc => pc.StudyProgramId == studyProgramId.Value));
+
+            // Pass filter values to ViewBag for the form
+            ViewBag.SearchCourse = searchCourse;
+            ViewBag.StudyPrograms = new SelectList(_context.StudyPrograms, "StudyProgramId", "Name", studyProgramId);
+
+            return View(await gradeDefinitions.ToListAsync());
         }
 
         // GET: GradeDefinitions/Details/5
@@ -48,7 +67,7 @@ namespace WebApplication8.Controllers
         // GET: GradeDefinitions/Create
         public IActionResult Create()
         {
-            ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "CourseId");
+            ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "Name");
             return View();
         }
 
@@ -59,28 +78,35 @@ namespace WebApplication8.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,CourseId,Name,Coefficient")] GradeDefinition gradeDefinition)
         {
-            if (ModelState.IsValid)
-            {
-                // ✅ Check existing coefficients for the same course
-                var totalCoefficient = await _context.GradeDefinitions
-                    .Where(g => g.CourseId == gradeDefinition.CourseId)
-                    .SumAsync(g => g.Coefficient);
+            // Check total coefficient for this course
+            var totalCoefficient = await _context.GradeDefinitions
+                .Where(g => g.CourseId == gradeDefinition.CourseId)
+                .SumAsync(g => g.Coefficient);
 
-                if (totalCoefficient + gradeDefinition.Coefficient > 1.0)
-                {
-                    ModelState.AddModelError("Coefficient",
-                        $"Total coefficient for this course cannot exceed 1. " +
-                        $"Currently at {totalCoefficient}, adding {gradeDefinition.Coefficient} would exceed the limit.");
-                }
-                else
-                {
-                    _context.Add(gradeDefinition);
-                    await _context.SaveChangesAsync();
-                    return RedirectToAction(nameof(Index));
-                }
+            if (totalCoefficient + gradeDefinition.Coefficient > 1.0)
+            {
+                ModelState.AddModelError("Coefficient",
+                    $"Total coefficient for this course cannot exceed 1. " +
+                    $"Currently at {totalCoefficient}, adding {gradeDefinition.Coefficient} would exceed the limit.");
             }
 
-            ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "CourseId", gradeDefinition.CourseId);
+            // ✅ Check if name already exists for this course
+            bool nameExists = await _context.GradeDefinitions
+                .AnyAsync(g => g.CourseId == gradeDefinition.CourseId && g.Name == gradeDefinition.Name);
+
+            if (nameExists)
+            {
+                ModelState.AddModelError("Name", $"A grade definition with this name already exists for this course.");
+            }
+
+            if (ModelState.IsValid)
+            {
+                _context.Add(gradeDefinition);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
+            }
+
+            ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "Name", gradeDefinition.CourseId);
             return View(gradeDefinition);
         }
 
@@ -98,7 +124,7 @@ namespace WebApplication8.Controllers
             {
                 return NotFound();
             }
-            ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "CourseId", gradeDefinition.CourseId);
+            ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "Name", gradeDefinition.CourseId);
             return View(gradeDefinition);
         }
 
@@ -114,44 +140,53 @@ namespace WebApplication8.Controllers
                 return NotFound();
             }
 
+            // Check total coefficient excluding current record
+            var totalCoefficient = await _context.GradeDefinitions
+                .Where(g => g.CourseId == gradeDefinition.CourseId && g.Id != gradeDefinition.Id)
+                .SumAsync(g => g.Coefficient);
+
+            if (totalCoefficient + gradeDefinition.Coefficient > 1.0)
+            {
+                ModelState.AddModelError("Coefficient",
+                    $"Total coefficient for this course cannot exceed 1. " +
+                    $"Currently at {totalCoefficient}, updating to {gradeDefinition.Coefficient} would exceed the limit.");
+            }
+
+            // ✅ Check if name already exists for this course excluding current record
+            bool nameExists = await _context.GradeDefinitions
+                .Where(g => g.Id != gradeDefinition.Id)
+                .AnyAsync(g => g.CourseId == gradeDefinition.CourseId && g.Name == gradeDefinition.Name);
+
+            if (nameExists)
+            {
+                ModelState.AddModelError("Name", $"A grade definition with this name already exists for this course.");
+            }
+
             if (ModelState.IsValid)
             {
-                // ✅ Check total excluding the current record
-                var totalCoefficient = await _context.GradeDefinitions
-                    .Where(g => g.CourseId == gradeDefinition.CourseId && g.Id != gradeDefinition.Id)
-                    .SumAsync(g => g.Coefficient);
-
-                if (totalCoefficient + gradeDefinition.Coefficient > 1.0)
+                try
                 {
-                    ModelState.AddModelError("Coefficient",
-                        $"Total coefficient for this course cannot exceed 1. " +
-                        $"Currently at {totalCoefficient}, updating to {gradeDefinition.Coefficient} would exceed the limit.");
+                    _context.Update(gradeDefinition);
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index));
                 }
-                else
+                catch (DbUpdateConcurrencyException)
                 {
-                    try
+                    if (!GradeDefinitionExists(gradeDefinition.Id))
                     {
-                        _context.Update(gradeDefinition);
-                        await _context.SaveChangesAsync();
-                        return RedirectToAction(nameof(Index));
+                        return NotFound();
                     }
-                    catch (DbUpdateConcurrencyException)
+                    else
                     {
-                        if (!GradeDefinitionExists(gradeDefinition.Id))
-                        {
-                            return NotFound();
-                        }
-                        else
-                        {
-                            throw;
-                        }
+                        throw;
                     }
                 }
             }
 
-            ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "CourseId", gradeDefinition.CourseId);
+            ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "Name", gradeDefinition.CourseId);
             return View(gradeDefinition);
         }
+
 
         // GET: GradeDefinitions/Delete/5
         public async Task<IActionResult> Delete(int? id)

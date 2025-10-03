@@ -4,34 +4,30 @@
     ViewData["Title"] = "Edit";
 }
 
-<h1>Edit</h1>
+<h1>Edit Availability</h1>
 
 <h4>Availability</h4>
 <hr />
 <div class="row">
     <div class="col-md-4">
-        <form asp-action="Edit">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <form asp-action="Edit" asp-route-id="@Model.AvailabilityId" method="post">
             <input type="hidden" asp-for="AvailabilityId" />
-            <div class="form-group">
-                <label asp-for="ShiftId" class="control-label"></label>
-                <select asp-for="ShiftId" class="form-control" asp-items="ViewBag.ShiftId"></select>
-                <span asp-validation-for="ShiftId" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="UserId" class="control-label"></label>
-                <select asp-for="UserId" class="form-control" asp-items="ViewBag.UserId"></select>
-                <span asp-validation-for="UserId" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="DayOfWeek" class="control-label"></label>
-                <select asp-for="DayOfWeek" class="form-control" asp-items="ViewBag.DayOfWeek"></select>
-                <span asp-validation-for="DayOfWeek" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <input type="submit" value="Save" class="btn btn-primary" />
-            </div>
+
+            <select asp-for="UserId" class="form-control" id="userSelect" asp-items="ViewBag.Users">
+                <option value="">-- Select User --</option>
+            </select>
+
+            <select asp-for="DayOfWeek" class="form-control" id="daySelect" asp-items="ViewBag.DayOfWeekList">
+                <option value="">-- Select Day --</option>
+            </select>
+
+            <select asp-for="ShiftId" class="form-control" id="shiftSelect">
+                <option value="">-- Select Shift --</option>
+            </select>
+
+            <input type="submit" value="Save" class="btn btn-primary" />
         </form>
+
     </div>
 </div>
 
@@ -40,5 +36,46 @@
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+                 function loadShifts() {
+            var userId = $("#userSelect").val();
+            var dayOfWeek = $("#daySelect").val();
+            dayOfWeek = dayOfWeek ? parseInt(dayOfWeek) : null;
+
+            var $shiftSelect = $("#shiftSelect");
+            $shiftSelect.empty().append($('<option>', { value: '', text: '-- Select Shift --' }));
+
+            if (!userId) return;
+
+            $.getJSON('@Url.Action("GetAvailableShifts", "Availabilities")',
+                { userId: userId, dayOfWeek: dayOfWeek },
+                function (data) {
+                    console.log("Returned data:", data);
+
+                    if (!data || data.length === 0) {
+                        $shiftSelect.append($('<option>', { value: '', text: 'No shifts available' }));
+                        return;
+                    }
+
+                    $.each(data, function (i, shift) {
+                        $shiftSelect.append($('<option>', { value: shift.shiftId, text: shift.text }));
+                    });
+                }
+            );
+        }
+
+        // Trigger on change
+        $("#userSelect, #daySelect").change(loadShifts);
+
+        // Optional: load on page load if user already selected
+        $(document).ready(function () {
+            if ($("#userSelect").val()) {
+                loadShifts();
+            }
+        });
+
+    </script>
 }

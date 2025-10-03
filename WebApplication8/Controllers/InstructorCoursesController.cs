@@ -84,6 +84,15 @@ namespace WebApplication8.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,UserId,CourseId")] InstructorCourse instructorCourse)
         {
+            // ✅ Check if this instructor is already assigned to this course
+            bool exists = await _context.InstructorCourses
+                .AnyAsync(ic => ic.UserId == instructorCourse.UserId && ic.CourseId == instructorCourse.CourseId);
+
+            if (exists)
+            {
+                ModelState.AddModelError("", "This instructor is already assigned to this course.");
+            }
+
             if (ModelState.IsValid)
             {
                 _context.Add(instructorCourse);
@@ -92,7 +101,6 @@ namespace WebApplication8.Controllers
             }
 
             ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "Name", instructorCourse.CourseId);
-
             var instructors = await GetInstructorsAsync();
             ViewData["UserId"] = new SelectList(instructors, "Id", "Email", instructorCourse.UserId);
 
@@ -122,6 +130,17 @@ namespace WebApplication8.Controllers
         {
             if (id != instructorCourse.Id) return NotFound();
 
+            // ✅ Check if another record has the same instructor-course combination
+            bool exists = await _context.InstructorCourses
+                .AnyAsync(ic => ic.Id != instructorCourse.Id
+                             && ic.UserId == instructorCourse.UserId
+                             && ic.CourseId == instructorCourse.CourseId);
+
+            if (exists)
+            {
+                ModelState.AddModelError("", "This instructor is already assigned to this course.");
+            }
+
             if (ModelState.IsValid)
             {
                 try
@@ -140,12 +159,12 @@ namespace WebApplication8.Controllers
             }
 
             ViewData["CourseId"] = new SelectList(_context.Courses, "CourseId", "Name", instructorCourse.CourseId);
-
             var instructors = await GetInstructorsAsync();
             ViewData["UserId"] = new SelectList(instructors, "Id", "Email", instructorCourse.UserId);
 
             return View(instructorCourse);
         }
+
 
         // GET: InstructorCourses/Delete/5
         public async Task<IActionResult> Delete(int? id)

@@ -1,41 +1,40 @@
 ﻿@model IEnumerable<WebApplication8.Models.LoadedTime>
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Loaded Times";
 }
 
-<h1>Index</h1>
+<h1>Loaded Times</h1>
 
 <p>
-    <a asp-action="Create">Create New</a>
+    <a asp-action="Create" class="btn btn-primary">Create New</a>
 </p>
-<table class="table">
+
+<form method="get" class="form-inline mb-3">
+    <input type="text" name="searchEmail" value="@ViewBag.SearchEmail" placeholder="Search by email" class="form-control mr-2" />
+    <button type="submit" class="btn btn-secondary">Search</button>
+</form>
+
+<table class="table table-striped">
     <thead>
         <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.HoursPerWeek)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.User)
-            </th>
+            <th>@Html.DisplayNameFor(model => model.HoursPerWeek)</th>
+            <th>@Html.DisplayName("User Email")</th>
             <th></th>
         </tr>
     </thead>
     <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.HoursPerWeek)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.User.Id)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.UserId">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.UserId">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.UserId">Delete</a>
-            </td>
-        </tr>
-}
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@Html.DisplayFor(modelItem => item.HoursPerWeek)</td>
+                <td>@item.User?.Email</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.UserId">Edit</a> |
+                    
+                    <a asp-action="Delete" asp-route-id="@item.UserId">Delete</a>
+                </td>
+            </tr>
+        }
     </tbody>
 </table>

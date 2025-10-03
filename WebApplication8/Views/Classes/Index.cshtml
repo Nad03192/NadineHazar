@@ -1,59 +1,132 @@
 ﻿@model IEnumerable<WebApplication8.Models.Class>
-
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Classes";
 }
 
-<h1>Index</h1>
-
+<h1>Classes</h1>
 <p>
-    <a asp-action="Create">Create New</a>
+    <a asp-action="Create" class="btn btn-success">Create New</a>
 </p>
-<table class="table">
-    <thead>
-        <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.StartTime)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.DayOfWeek)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.User)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Course)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Room)
-            </th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.StartTime)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.DayOfWeek)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.User.Id)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Course.CourseId)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Room.RoomId)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.ClassId">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.ClassId">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.ClassId">Delete</a>
-            </td>
-        </tr>
-}
-    </tbody>
-</table>
+
+<!-- Filters -->
+<form method="get" asp-action="Index" class="mb-3">
+    <div class="row g-2">
+        <div class="col">
+            <select name="semesterId" asp-items="ViewBag.Semesters" class="form-control">
+                <option value="">All Semesters</option>
+            </select>
+        </div>
+        <div class="col">
+            <select name="instructorId" asp-items="ViewBag.Instructors" class="form-control">
+                <option value="">All Instructors</option>
+            </select>
+        </div>
+        <div class="col">
+            <select name="facultyId" asp-items="ViewBag.Faculties" class="form-control">
+                <option value="">All Faculties</option>
+            </select>
+        </div>
+        <div class="col">
+            <select name="programId" asp-items="ViewBag.Programs" class="form-control">
+                <option value="">All Programs</option>
+            </select>
+        </div>
+        <div class="col">
+            <select name="courseTypeId" asp-items="ViewBag.CourseTypes" class="form-control">
+                <option value="">All Course Types</option>
+            </select>
+        </div>
+        <div class="col">
+            <select name="campusId" asp-items="ViewBag.Campuses" class="form-control">
+                <option value="">All Campuses</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Filter</button>
+            <a asp-action="Index" class="btn btn-secondary">Clear Filters</a>
+        </div>
+    </div>
+</form>
+
+<hr />
+
+<!-- Table -->
+<div class="table-responsive">
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>#</th> <!-- Counter column -->
+                <th>Instructor</th>
+                <th>Course</th>
+                <th>Semester</th>
+                <th>Room</th>
+                <th>Building</th>
+                <th>Faculties</th>
+                <th>Study Programs</th>
+                <th>Course Types</th>
+                <th>Day</th>
+                <th>Start Time</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @{
+                int counter = 1; // initialize counter
+            }
+
+            @if (!Model.Any())
+            {
+                <tr>
+                    <td colspan="12" class="text-center text-muted">No classes found for the selected filters.</td>
+                </tr>
+            }
+            else
+            {
+                foreach (var item in Model)
+                {
+                    <tr>
+                        <td>@counter</td> <!-- show counter -->
+                        <td>@(item.User?.Email ?? "N/A")</td>
+                        <td>@(item.Course?.Name ?? "N/A")</td>
+                        <td>@(item.Semester?.Name ?? "N/A")</td>
+                        <td>@(item.Room?.Name ?? "N/A")</td>
+                        <td>@(item.Room?.Building?.Name ?? "N/A")</td>
+                        <td>
+                            @(item.Course?.ProgramCourses != null
+                                ? string.Join(", ", item.Course.ProgramCourses
+                                .Select(pc => pc.StudyProgram?.Faculty?.Name)
+                                .Where(f => !string.IsNullOrEmpty(f))
+                                .Distinct())
+                                : "N/A")
+                        </td>
+                        <td>
+                            @(item.Course?.ProgramCourses != null
+                                ? string.Join(", ", item.Course.ProgramCourses
+                                .Select(pc => pc.StudyProgram?.Name)
+                                .Where(sp => !string.IsNullOrEmpty(sp))
+                                .Distinct())
+                                : "N/A")
+                        </td>
+                        <td>
+                            @(item.Course?.ProgramCourses != null
+                                ? string.Join(", ", item.Course.ProgramCourses
+                                .Select(pc => pc.CourseType?.Name)
+                                .Where(ct => !string.IsNullOrEmpty(ct))
+                                .Distinct())
+                                : "N/A")
+                        </td>
+                        <td>@item.DayOfWeek</td>
+                        <td>@item.StartTime.ToString("hh\\:mm")</td>
+                        <td>
+                            <a asp-action="Edit" asp-route-id="@item.ClassId" title="Edit class">Edit</a> |
+                            <a asp-action="Details" asp-route-id="@item.ClassId" title="View details">Details</a> |
+                            <a asp-action="Delete" asp-route-id="@item.ClassId" title="Delete class">Delete</a>
+                        </td>
+                    </tr>
+                    counter++; // increment counter
+                }
+            }
+        </tbody>
+
+    </table>
+</div>

@@ -19,11 +19,37 @@ namespace WebApplication8.Controllers
             _context = context;
         }
 
-        // GET: Courses
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string searchName, string searchDescription, int? studyProgramId, int? courseTypeId)
         {
-            return View(await _context.Courses.ToListAsync());
+            var coursesQuery = _context.Courses
+                .Include(c => c.ProgramCourses)
+                    .ThenInclude(pc => pc.StudyProgram)
+                .Include(c => c.ProgramCourses)
+                    .ThenInclude(pc => pc.CourseType)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(searchName))
+                coursesQuery = coursesQuery.Where(c => c.Name.Contains(searchName));
+
+            if (!string.IsNullOrEmpty(searchDescription))
+                coursesQuery = coursesQuery.Where(c => c.Description.Contains(searchDescription));
+
+            if (studyProgramId.HasValue)
+                coursesQuery = coursesQuery.Where(c => c.ProgramCourses.Any(pc => pc.StudyProgramId == studyProgramId.Value));
+
+            if (courseTypeId.HasValue)
+                coursesQuery = coursesQuery.Where(c => c.ProgramCourses.Any(pc => pc.CourseTypeId == courseTypeId.Value));
+
+            var model = await coursesQuery.ToListAsync();
+
+            // Prepare dropdowns for filters
+            ViewData["StudyPrograms"] = new SelectList(await _context.StudyPrograms.ToListAsync(), "StudyProgramId", "Name");
+            ViewData["CourseTypes"] = new SelectList(await _context.CourseTypes.ToListAsync(), "CourseTypeId", "Name");
+
+            return View(model);
         }
+
+
 
         // GET: Courses/Details/5
         public async Task<IActionResult> Details(int? id)
@@ -56,6 +82,13 @@ namespace WebApplication8.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("CourseId,Name,Description,CreditNumber")] Course course)
         {
+            // Check if a course with the same name already exists
+            bool nameExists = await _context.Courses.AnyAsync(c => c.Name == course.Name);
+            if (nameExists)
+            {
+                ModelState.AddModelError("Name", "A course with this name already exists.");
+            }
+
             if (ModelState.IsValid)
             {
                 _context.Add(course);
@@ -93,6 +126,15 @@ namespace WebApplication8.Controllers
                 return NotFound();
             }
 
+            // Check if a course with the same name exists, excluding the current one
+            bool nameExists = await _context.Courses
+                .AnyAsync(c => c.Name == course.Name && c.CourseId != course.CourseId);
+
+            if (nameExists)
+            {
+                ModelState.AddModelError("Name", "A course with this name already exists.");
+            }
+
             if (ModelState.IsValid)
             {
                 try
@@ -115,6 +157,7 @@ namespace WebApplication8.Controllers
             }
             return View(course);
         }
+
 
         // GET: Courses/Delete/5
         public async Task<IActionResult> Delete(int? id)

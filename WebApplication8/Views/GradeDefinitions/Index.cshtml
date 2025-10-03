@@ -4,11 +4,27 @@
     ViewData["Title"] = "Index";
 }
 
-<h1>Index</h1>
+<h1>Grade Definitions</h1>
 
 <p>
     <a asp-action="Create">Create New</a>
 </p>
+<form method="get" class="mb-3 row g-2">
+    <div class="col-auto">
+        <input type="text" name="searchCourse" class="form-control"
+               placeholder="Search by course name" value="@(ViewBag.SearchCourse ?? "")" />
+    </div>
+
+    <div class="col-auto">
+        <select name="studyProgramId" class="form-control" asp-items="ViewBag.StudyPrograms">
+            <option value="">-- All Study Programs --</option>
+        </select>
+    </div>
+
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Filter</button>
+    </div>
+</form>
 <table class="table">
     <thead>
         <tr>
@@ -26,22 +42,16 @@
     </thead>
     <tbody>
 @foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.Course.CourseId)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Name)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Coefficient)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
-            </td>
-        </tr>
+            <tr>
+                <td>@item.Course?.Name</td>
+                <td>@item.Name</td>
+                <td>@item.Coefficient</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
+                  
+                    <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
+                </td>
+            </tr>
 }
     </tbody>
 </table>

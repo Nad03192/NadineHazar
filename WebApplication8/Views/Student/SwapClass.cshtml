@@ -1,0 +1,46 @@
+﻿@model WebApplication8.Models.SwapClassesViewModel
+
+<h2>Swap Class: @Model.CurrentCourseName</h2>
+<p>Instructor: @Model.CurrentInstructor</p>
+<p>Time: @Model.CurrentDayTime</p>
+
+@if (!Model.AvailableClasses.Any())
+{
+    <div class="alert alert-info">No available classes to swap into.</div>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Course Name</th>
+                <th>Course Type</th>
+                <th>Instructor</th>
+                <th>Day & Time</th>
+                <th>Room</th>
+                <th>Seats</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var cls in Model.AvailableClasses)
+            {
+                <tr>
+                    <td>@cls.CourseName</td>
+                    <td>@cls.CourseTypeName</td>
+                    <td>@cls.InstructorUserName</td>
+                    <td>@cls.DayOfWeek @cls.StartTime</td>
+                    <td>@cls.RoomName (@cls.BuildingName)</td>
+                    <td>@cls.AvailableSeats</td>
+                    <td>
+                        <form asp-action="SwapClassConfirmed" method="post">
+                            <input type="hidden" name="currentClassId" value="@Model.CurrentClassId" />
+                            <input type="hidden" name="newClassId" value="@cls.ClassId" />
+                            <button type="submit" class="btn btn-primary">Swap</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

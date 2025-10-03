@@ -98,11 +98,19 @@ namespace WebApplication8.Controllers
             return View();
         }
 
-        // POST: UserCampus/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("UserId,CampusId")] UserCampus userCampus)
         {
+            // ✅ Check if this user-campus combination already exists
+            bool exists = await _context.UserCampuses
+                .AnyAsync(uc => uc.UserId == userCampus.UserId && uc.CampusId == userCampus.CampusId);
+
+            if (exists)
+            {
+                ModelState.AddModelError("", "This user is already assigned to the selected campus.");
+            }
+
             if (ModelState.IsValid)
             {
                 _context.Add(userCampus);
@@ -141,6 +149,15 @@ namespace WebApplication8.Controllers
         {
             if (userId != userCampus.UserId || campusId != userCampus.CampusId)
                 return NotFound();
+
+            // ✅ Check uniqueness excluding the current record
+            bool exists = await _context.UserCampuses
+                .AnyAsync(uc => uc.UserId == userCampus.UserId && uc.CampusId == userCampus.CampusId);
+
+            if (exists)
+            {
+                ModelState.AddModelError("", "This user is already assigned to the selected campus.");
+            }
 
             if (ModelState.IsValid)
             {

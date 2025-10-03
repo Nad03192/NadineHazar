@@ -37,6 +37,7 @@
             <input asp-for="ConfirmPassword" type="password" class="form-control" placeholder="Confirm password" />
             <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
         </div>
+        <div asp-validation-summary="All" class="text-danger mb-3"></div>
 
         <button type="submit" class="btn btn-primary w-100">Create Instructor</button>
     </form>

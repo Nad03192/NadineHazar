@@ -67,14 +67,25 @@ namespace WebApplication8.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("CampusId,Name,Description")] Campus campus)
         {
+            // Check if a campus with the same name already exists
+            bool exists = await _context.Campuses
+                .AnyAsync(c => c.Name == campus.Name);
+
+            if (exists)
+            {
+                ModelState.AddModelError("Name", "A campus with this name already exists.");
+            }
+
             if (ModelState.IsValid)
             {
                 _context.Add(campus);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
+
             return View(campus);
         }
+
 
         // GET: Campus/Edit/5
         public async Task<IActionResult> Edit(int? id)
@@ -104,6 +115,15 @@ namespace WebApplication8.Controllers
                 return NotFound();
             }
 
+            // Check if a campus with the same name already exists (excluding the current one)
+            bool nameExists = await _context.Campuses
+                .AnyAsync(c => c.Name == campus.Name && c.CampusId != campus.CampusId);
+
+            if (nameExists)
+            {
+                ModelState.AddModelError("Name", "A campus with this name already exists.");
+            }
+
             if (ModelState.IsValid)
             {
                 try
@@ -124,6 +144,7 @@ namespace WebApplication8.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
+
             return View(campus);
         }
 

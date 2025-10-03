@@ -21,10 +21,34 @@ namespace WebApplication8.Controllers
         }
 
         // GET: Shifts
-        public async Task<IActionResult> Index()
+        // GET: Shifts
+        public async Task<IActionResult> Index(string sortOrder)
         {
-            return View(await _context.Shifts.ToListAsync());
+            ViewData["StartTimeSortParm"] = String.IsNullOrEmpty(sortOrder) ? "start_desc" : "";
+            ViewData["EndTimeSortParm"] = sortOrder == "end_asc" ? "end_desc" : "end_asc";
+
+            var shifts = from s in _context.Shifts
+                         select s;
+
+            switch (sortOrder)
+            {
+                case "start_desc":
+                    shifts = shifts.OrderByDescending(s => s.StartTime);
+                    break;
+                case "end_asc":
+                    shifts = shifts.OrderBy(s => s.EndTime);
+                    break;
+                case "end_desc":
+                    shifts = shifts.OrderByDescending(s => s.EndTime);
+                    break;
+                default: // start_asc
+                    shifts = shifts.OrderBy(s => s.StartTime);
+                    break;
+            }
+
+            return View(await shifts.AsNoTracking().ToListAsync());
         }
+
 
         // GET: Shifts/Details/5
         public async Task<IActionResult> Details(int? id)
@@ -66,23 +90,27 @@ namespace WebApplication8.Controllers
                 return View(shift);
             }
 
-            // ✅ Check if a shift already exists
+            // Check if a shift already exists
             var existing = await _context.Shifts
                 .FirstOrDefaultAsync(s => s.StartTime == shift.StartTime && s.EndTime == shift.EndTime);
 
             if (existing != null)
             {
-                TempData["Message"] = $"Shift from {shift.StartTime:hh\\:mm} to {shift.EndTime:hh\\:mm} already exists.";
-                return RedirectToAction(nameof(Index));
+                // ❌ Stay on page and show error
+                ModelState.AddModelError("", $"Shift from {shift.StartTime:hh\\:mm} to {shift.EndTime:hh\\:mm} already exists.");
+                return View(shift);
             }
 
-            // ✅ Add new shift
+            // Add new shift
             _context.Shifts.Add(shift);
             await _context.SaveChangesAsync();
 
-            TempData["Message"] = $"Shift from {shift.StartTime:hh\\:mm} to {shift.EndTime:hh\\:mm} added successfully.";
-            return RedirectToAction(nameof(Index));
+            // Optional: success message
+            ViewBag.Message = $"Shift from {shift.StartTime:hh\\:mm} to {shift.EndTime:hh\\:mm} added successfully.";
+
+            return View(shift); // stay on the page
         }
+
 
 
         // GET: Shifts/Edit/5
@@ -109,8 +137,24 @@ namespace WebApplication8.Controllers
         public async Task<IActionResult> Edit(int id, [Bind("ShiftId,StartTime,EndTime")] Shift shift)
         {
             if (id != shift.ShiftId)
-            {
                 return NotFound();
+
+            if (shift.StartTime >= shift.EndTime)
+            {
+                ModelState.AddModelError("", "Start time must be earlier than end time.");
+                return View(shift); // stay on page if error
+            }
+
+            // Check for duplicate shifts (excluding current shift)
+            var existing = await _context.Shifts
+                .FirstOrDefaultAsync(s => s.ShiftId != shift.ShiftId
+                                       && s.StartTime == shift.StartTime
+                                       && s.EndTime == shift.EndTime);
+
+            if (existing != null)
+            {
+                ModelState.AddModelError("", $"Shift from {shift.StartTime:hh\\:mm} to {shift.EndTime:hh\\:mm} already exists.");
+                return View(shift); // stay on page if duplicate
             }
 
             if (ModelState.IsValid)
@@ -119,21 +163,20 @@ namespace WebApplication8.Controllers
                 {
                     _context.Update(shift);
                     await _context.SaveChangesAsync();
+
+                    // ✅ redirect to Index on success
+                    return RedirectToAction(nameof(Index));
                 }
                 catch (DbUpdateConcurrencyException)
                 {
                     if (!ShiftExists(shift.ShiftId))
-                    {
                         return NotFound();
-                    }
                     else
-                    {
                         throw;
-                    }
                 }
-                return RedirectToAction(nameof(Index));
             }
-            return View(shift);
+
+            return View(shift); // fallback
         }
 
         // GET: Shifts/Delete/5

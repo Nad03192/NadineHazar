@@ -80,12 +80,22 @@ namespace WebApplication8.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("BuildingId,Name,Description,CampusId")] Building building)
         {
+            // Check if a building with the same name exists in the selected campus
+            bool exists = await _context.Buildings
+                .AnyAsync(b => b.Name == building.Name && b.CampusId == building.CampusId);
+
+            if (exists)
+            {
+                ModelState.AddModelError("Name", "A building with this name already exists in the selected campus.");
+            }
+
             if (ModelState.IsValid)
             {
                 _context.Add(building);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
+
             ViewData["CampusId"] = new SelectList(_context.Campuses, "CampusId", "Name", building.CampusId);
             return View(building);
         }
@@ -119,6 +129,15 @@ namespace WebApplication8.Controllers
                 return NotFound();
             }
 
+            // Check if a building with the same name already exists (excluding the current one)
+            bool nameExists = await _context.Buildings
+                .AnyAsync(b => b.Name == building.Name && b.BuildingId != building.BuildingId);
+
+            if (nameExists)
+            {
+                ModelState.AddModelError("Name", "A building with this name already exists.");
+            }
+
             if (ModelState.IsValid)
             {
                 try
@@ -139,9 +158,11 @@ namespace WebApplication8.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
+
             ViewData["CampusId"] = new SelectList(_context.Campuses, "CampusId", "Name", building.CampusId);
             return View(building);
         }
+
 
         // GET: Buildings/Delete/5
         public async Task<IActionResult> Delete(int? id)
